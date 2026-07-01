@@ -1,0 +1,91 @@
+.lock-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: #eef2f7;
+  padding: 24px;
+}
+
+.lock-card {
+  width: 100%;
+  max-width: 420px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 28px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.lock-kicker {
+  margin: 0 0 8px;
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.lock-card h1 {
+  margin: 0 0 10px;
+  color: #111827;
+  font-size: 28px;
+}
+
+.lock-description {
+  margin: 0 0 22px;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+.lock-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.lock-card label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: #374151;
+  font-weight: 600;
+}
+
+.lock-card input {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 11px 12px;
+  font-size: 15px;
+}
+
+.lock-card input:focus {
+  outline: 2px solid #bfdbfe;
+  border-color: #2563eb;
+}
+
+.lock-card button {
+  border: none;
+  border-radius: 8px;
+  background: #1f2937;
+  color: white;
+  padding: 12px 16px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.lock-card button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.lock-error {
+  margin: 0;
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.lock-note {
+  margin: 18px 0 0;
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.5;
+}

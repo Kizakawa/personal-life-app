@@ -1,0 +1,103 @@
+.rich-editor-shell {
+  overflow: hidden;
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.rich-editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+  padding: 9px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.rich-editor-toolbar button,
+.rich-editor-upload-button,
+.rich-editor-color-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 7px 9px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.rich-editor-color-picker select {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  outline: none;
+}
+
+.rich-editor-upload-button input {
+  display: none;
+}
+
+.rich-editor-area {
+  padding: 14px;
+  color: #0f172a;
+  line-height: 1.65;
+  outline: none;
+}
+
+.rich-editor-area:empty::before {
+  content: attr(data-placeholder);
+  color: #94a3b8;
+}
+
+.rich-editor-area img {
+  max-width: 100%;
+  height: auto;
+  margin: 10px 0;
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+}
+
+.rich-editor-area h3 {
+  margin: 14px 0 8px;
+  color: #0f172a;
+}
+
+.rich-editor-area ul,
+.rich-editor-area ol {
+  padding-left: 24px;
+}
+
+.rich-editor-save-state {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.rich-editor-save-state.saving,
+.rich-editor-save-state.dirty {
+  color: #b45309;
+}
+
+.rich-editor-save-state.saved {
+  color: #047857;
+}
+
+.rich-editor-save-state.error {
+  color: #b91c1c;
+}
+
+.rich-editor-area img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+  margin: 8px 0;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+}

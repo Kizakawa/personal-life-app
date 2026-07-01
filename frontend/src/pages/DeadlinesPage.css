@@ -1,0 +1,784 @@
+.deadlines-page {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.deadlines-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.deadline-section-label {
+  display: inline-block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+  color: #64748b;
+}
+
+.deadline-panel,
+.deadline-summary-card,
+.deadline-toolbar-panel,
+.deadline-radar-panel,
+.deadline-hero {
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 14px 35px rgba(15, 23, 42, 0.06);
+}
+
+.deadline-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 18px;
+  padding: 22px;
+  overflow: hidden;
+  position: relative;
+}
+
+.deadline-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 7px;
+  background: #2563eb;
+}
+
+.deadline-hero.danger::before {
+  background: #dc2626;
+}
+
+.deadline-hero.warning::before {
+  background: #f97316;
+}
+
+.deadline-hero.notice::before {
+  background: #2563eb;
+}
+
+.deadline-hero.done::before,
+.deadline-hero.calm::before {
+  background: #059669;
+}
+
+.deadline-hero-label {
+  display: inline-flex;
+  margin-bottom: 8px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.deadline-hero-main h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 26px;
+}
+
+.deadline-hero-main p {
+  margin: 8px 0 0;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.deadline-hero-meter {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px;
+  border-radius: 16px;
+  background: #f8fafc;
+}
+
+.deadline-hero-meter strong {
+  color: #0f172a;
+  font-size: 34px;
+  line-height: 1;
+}
+
+.deadline-hero-meter span {
+  color: #64748b;
+  font-weight: 700;
+}
+
+.deadline-progress-track {
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.deadline-progress-track div {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2563eb, #059669);
+}
+
+.deadline-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+  gap: 14px;
+}
+
+.deadline-summary-card {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.deadline-summary-card span {
+  color: #64748b;
+  font-weight: 800;
+}
+
+.deadline-summary-card strong {
+  color: #0f172a;
+  font-size: 30px;
+  line-height: 1;
+}
+
+.deadline-summary-card small {
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.deadline-summary-card.danger {
+  background: linear-gradient(135deg, #fef2f2, #ffffff);
+  border-color: #fecaca;
+}
+
+.deadline-summary-card.today {
+  background: linear-gradient(135deg, #fff1f2, #ffffff);
+  border-color: #fecdd3;
+}
+
+.deadline-summary-card.warning {
+  background: linear-gradient(135deg, #fff7ed, #ffffff);
+  border-color: #fed7aa;
+}
+
+.deadline-summary-card.high {
+  background: linear-gradient(135deg, #fefce8, #ffffff);
+  border-color: #fde68a;
+}
+
+.deadline-summary-card.success {
+  background: linear-gradient(135deg, #ecfdf5, #ffffff);
+  border-color: #bbf7d0;
+}
+
+.deadline-radar-panel,
+.deadline-toolbar-panel,
+.deadline-panel {
+  padding: 18px;
+}
+
+.deadline-panel-heading,
+.deadline-group-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.deadline-panel-heading.align-top {
+  align-items: flex-start;
+}
+
+.deadline-panel-heading h3,
+.deadline-group-heading h3,
+.deadline-method-panel h3 {
+  margin: 0;
+  color: #0f172a;
+}
+
+.deadline-panel-heading p,
+.deadline-group-heading p {
+  margin: 6px 0 0;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.deadline-group-heading span {
+  min-width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: #f1f5f9;
+  color: #0f172a;
+  font-weight: 900;
+}
+
+.deadline-radar-list {
+  display: grid;
+  grid-template-columns: repeat(14, minmax(76px, 1fr));
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.deadline-radar-day {
+  min-width: 76px;
+  padding: 12px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #f8fafc;
+  cursor: pointer;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.deadline-radar-day span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.deadline-radar-day strong {
+  color: #0f172a;
+}
+
+.deadline-radar-day small {
+  color: #94a3b8;
+}
+
+.deadline-radar-day.has-deadline {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.deadline-radar-day.has-high {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.deadline-toolbar {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.4fr) repeat(3, minmax(150px, 1fr));
+  gap: 14px;
+}
+
+.deadline-toolbar-footer {
+  margin-top: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: #64748b;
+}
+
+.deadline-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.deadline-field span {
+  font-weight: 800;
+  color: #334155;
+}
+
+.deadline-field input,
+.deadline-field select,
+.deadline-field textarea {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 13px;
+  padding: 12px 14px;
+  background: #ffffff;
+  color: #0f172a;
+  font: inherit;
+  outline: none;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.deadline-field input:focus,
+.deadline-field select:focus,
+.deadline-field textarea:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.deadline-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(330px, 0.95fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.deadline-main-column,
+.deadline-side-column {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.deadline-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.deadline-group.overdue {
+  border-color: #fecaca;
+}
+
+.deadline-group.today {
+  border-color: #fecdd3;
+}
+
+.deadline-group.critical {
+  border-color: #fed7aa;
+}
+
+.deadline-item {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: stretch;
+  padding: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: #ffffff;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.deadline-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+}
+
+.deadline-item.is-active {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.deadline-item.danger {
+  background: linear-gradient(90deg, #fef2f2, #ffffff 34%);
+}
+
+.deadline-item.warning {
+  background: linear-gradient(90deg, #fff7ed, #ffffff 34%);
+}
+
+.deadline-item.notice {
+  background: linear-gradient(90deg, #eff6ff, #ffffff 34%);
+}
+
+.deadline-item.done {
+  opacity: 0.78;
+  background: #f8fafc;
+}
+
+.deadline-countdown {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 14px;
+  background: #f8fafc;
+  text-align: center;
+}
+
+.deadline-countdown span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.deadline-countdown strong {
+  color: #0f172a;
+  line-height: 1.25;
+}
+
+.deadline-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.deadline-title-row h4 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 17px;
+}
+
+.deadline-title-row p,
+.deadline-note {
+  margin: 5px 0 0;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.deadline-note {
+  margin-top: 10px;
+}
+
+.deadline-type-icon {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.deadline-type-icon.large {
+  width: 48px;
+  height: 48px;
+  font-size: 14px;
+}
+
+.deadline-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.deadline-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.deadline-badge.priority-high {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.deadline-badge.priority-medium {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.deadline-badge.priority-low {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.deadline-badge.status-done {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.deadline-badge.status-doing {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.deadline-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.soft-button,
+.done-button,
+.text-button,
+.icon-button {
+  border: none;
+  cursor: pointer;
+  font: inherit;
+}
+
+.soft-button,
+.done-button {
+  padding: 10px 12px;
+  border-radius: 11px;
+  font-weight: 900;
+}
+
+.soft-button {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.done-button {
+  background: #0f766e;
+  color: #ffffff;
+}
+
+.text-button {
+  background: transparent;
+  color: #2563eb;
+  font-weight: 900;
+}
+
+.icon-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.deadline-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.deadline-two-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.deadline-form-actions,
+.deadline-detail-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.deadline-detail-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.deadline-detail-alert {
+  padding: 16px;
+  border-radius: 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.deadline-detail-alert.danger {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.deadline-detail-alert.warning {
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
+.deadline-detail-alert.notice {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.deadline-detail-alert.done,
+.deadline-detail-alert.calm {
+  background: #ecfdf5;
+  border-color: #bbf7d0;
+}
+
+.deadline-detail-alert span {
+  display: inline-flex;
+  margin-bottom: 6px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.deadline-detail-alert strong {
+  display: block;
+  color: #0f172a;
+  font-size: 24px;
+}
+
+.deadline-detail-alert p {
+  margin: 7px 0 0;
+  color: #475569;
+  line-height: 1.55;
+}
+
+.deadline-detail-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.deadline-detail-title h4 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 22px;
+}
+
+.deadline-detail-title p {
+  margin: 6px 0 0;
+  color: #64748b;
+}
+
+.deadline-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.deadline-detail-grid article,
+.deadline-detail-note {
+  padding: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 15px;
+  background: #f8fafc;
+}
+
+.deadline-detail-grid span,
+.deadline-detail-note span {
+  display: block;
+  margin-bottom: 6px;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.deadline-detail-grid strong {
+  color: #0f172a;
+}
+
+.deadline-detail-note p {
+  margin: 0;
+  color: #334155;
+  line-height: 1.6;
+}
+
+.deadline-template-list,
+.deadline-method-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.deadline-template-item,
+.deadline-method-list article {
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 15px;
+  background: #f8fafc;
+  padding: 13px;
+}
+
+.deadline-template-item {
+  text-align: left;
+  cursor: pointer;
+}
+
+.deadline-template-item:hover {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.deadline-template-item strong,
+.deadline-method-list strong {
+  display: block;
+  color: #0f172a;
+}
+
+.deadline-template-item span,
+.deadline-method-list span {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.deadline-empty-state {
+  text-align: center;
+  color: #64748b;
+}
+
+.deadline-empty-state h3 {
+  margin: 0 0 8px;
+  color: #0f172a;
+}
+
+.deadline-empty-state p {
+  margin: 0 0 14px;
+}
+
+.deadline-empty-state.compact {
+  padding: 26px 14px;
+}
+
+.deadline-error {
+  padding: 14px 16px;
+  border: 1px solid #fecaca;
+  border-radius: 14px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-weight: 800;
+}
+
+@media (max-width: 1220px) {
+  .deadline-toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .deadline-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 820px) {
+  .deadline-hero,
+  .deadline-item {
+    grid-template-columns: 1fr;
+  }
+
+  .deadline-toolbar,
+  .deadline-two-columns,
+  .deadline-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .deadline-radar-list {
+    grid-template-columns: repeat(7, minmax(76px, 1fr));
+  }
+
+  .deadline-actions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 560px) {
+  .deadline-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .deadlines-header,
+  .deadline-toolbar-footer,
+  .deadline-panel-heading,
+  .deadline-group-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
