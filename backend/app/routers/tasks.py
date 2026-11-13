@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.gamification import record_gamification_event
+from app.services.gamification_service import record_gamification_event
 from app.models.task import Task
 from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate
 

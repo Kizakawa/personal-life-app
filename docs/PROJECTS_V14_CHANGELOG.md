@@ -16,8 +16,14 @@ V14 la ban nang cap tap trung vao trai nghiem dung that: bot roi, bot form co di
   - build log ro hon.
   - dung registry npm public.
   - xuat `PersonalLifeApp_HSSV_Portable.zip`.
-  - file start tu tao shortcut Desktop lan dau.
-  - backend ghi log vao `%APPDATA%\PersonalLifeApp\logs`.
+  - dua file start ve kieu V13: chay backend, doi ngan, mo web.
+  - backend ghi log toi thieu vao `PersonalLifeApp\backend.log`.
+- Ban va backend start:
+  - bo lop kiem tra `/health`, `/auth/status`, tu dong kill port va shortcut desktop vi lam startup cham va de gay nhieu hon V13.
+  - PyInstaller gom them cac submodule dong cua FastAPI/Pydantic/SQLAlchemy/Google GenAI.
+  - tach `app.gamification` thanh `app.services.gamification_service` de tranh circular import khi dong goi PyInstaller.
+  - giu lai `app.gamification` duoi dang compatibility shim de ghi de file cu neu nguoi dung giai nen de len thu muc co san.
+  - build script tu xoa `backend/build`, `backend/dist`, file `.spec` va `__pycache__` truoc khi dong exe.
 - Giu du lieu nguoi dung trong `%APPDATA%\PersonalLifeApp`, tach khoi thu muc chuong trinh de nang cap khong mat du lieu.
 
 ## Viec nen tiep tuc o V15

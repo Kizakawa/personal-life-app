@@ -1,29 +1,18 @@
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy.orm import Session
+"""Compatibility shim for older imports.
 
-from app.database import get_db
-from app.gamification import build_gamification_summary
-from app.models.gamification_event import GamificationEvent
-from app.schemas.gamification_event import GamificationEventResponse
+The real implementation lives in app.services.gamification_service. Keeping this
+file prevents stale folders or old PyInstaller builds from reusing the previous
+module body, which caused circular imports in portable builds.
+"""
 
-router = APIRouter(prefix="/gamification", tags=["Gamification"])
+from app.services.gamification_service import (
+    build_gamification_summary,
+    calculate_streak,
+    record_gamification_event,
+)
 
-
-@router.get("/summary")
-def get_gamification_summary(db: Session = Depends(get_db)):
-    return build_gamification_summary(db)
-
-
-@router.get("/events", response_model=list[GamificationEventResponse])
-def get_gamification_events(
-    limit: int = Query(default=50, ge=1, le=200),
-    offset: int = Query(default=0, ge=0),
-    db: Session = Depends(get_db),
-):
-    return (
-        db.query(GamificationEvent)
-        .order_by(GamificationEvent.created_at.desc())
-        .offset(offset)
-        .limit(limit)
-        .all()
-    )
+__all__ = [
+    "build_gamification_summary",
+    "calculate_streak",
+    "record_gamification_event",
+]

@@ -173,6 +173,7 @@ function createInitialForm(dateText) {
 function JournalPage() {
   const todayText = toDateInputValue(new Date());
   const editorRef = useRef(null);
+  const editorSelectionRef = useRef(null);
   const backgroundInputRef = useRef(null);
   const emoteInputRef = useRef(null);
 
@@ -187,6 +188,7 @@ function JournalPage() {
   const [showEmotePanel, setShowEmotePanel] = useState(false);
   const [cropDraft, setCropDraft] = useState(null);
   const [editorEmpty, setEditorEmpty] = useState(true);
+  const [activeTextColor, setActiveTextColor] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -208,6 +210,17 @@ function JournalPage() {
   useEffect(() => {
     loadEntries();
   }, []);
+
+  useEffect(() => {
+    if (view !== "editor" || !editorRef.current) {
+      return;
+    }
+
+    const nextContent = sanitizeHtml(form.content || "");
+    editorRef.current.innerHTML = nextContent;
+    setEditorEmpty(!stripHtml(nextContent));
+    editorSelectionRef.current = null;
+  }, [form.id, form.targetDate, view]);
 
   const entriesWithMeta = useMemo(
     () =>
@@ -256,6 +269,7 @@ function JournalPage() {
 
   const selectedEntry = entriesByDate.get(selectedDate)?.[0] || null;
   const selectedBackground = getBackground(form.backgroundId);
+  const defaultJournalTextColor = selectedBackground.text === "dark" ? "#1f1714" : "#fff8f1";
 
   const calendarDays = useMemo(
     () => buildCalendarDays(selectedMonth),
@@ -324,6 +338,7 @@ function JournalPage() {
     setShowMoodPicker(false);
     setShowStylePanel(false);
     setShowEmotePanel(false);
+    setActiveTextColor("");
     setView("editor");
   }
 
@@ -407,31 +422,115 @@ function JournalPage() {
     if (editorRef.current && editorRef.current.innerHTML !== cleanContent) {
       editorRef.current.innerHTML = cleanContent;
     }
+    setForm((current) => ({
+      ...current,
+      content: cleanContent,
+    }));
     setEditorEmpty(!stripHtml(cleanContent));
   }
 
-  function applyTextColor(color) {
-    editorRef.current?.focus();
-    document.execCommand("foreColor", false, color);
+  function saveEditorSelection() {
+    const editor = editorRef.current;
+    const selection = window.getSelection?.();
+
+    if (!editor || !selection || selection.rangeCount === 0) {
+      return;
+    }
+
+    const range = selection.getRangeAt(0);
+
+    if (editor.contains(range.commonAncestorContainer)) {
+      editorSelectionRef.current = range.cloneRange();
+    }
+  }
+
+  function placeCaretAtEnd() {
+    const editor = editorRef.current;
+
+    if (!editor) {
+      return;
+    }
+
+    editor.focus();
+    const range = document.createRange();
+    range.selectNodeContents(editor);
+    range.collapse(false);
+
+    const selection = window.getSelection?.();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    editorSelectionRef.current = range.cloneRange();
+  }
+
+  function restoreEditorSelection() {
+    const editor = editorRef.current;
+    const selection = window.getSelection?.();
+
+    if (!editor || !selection) {
+      return;
+    }
+
+    editor.focus();
+
+    const savedRange = editorSelectionRef.current;
+
+    if (savedRange && editor.contains(savedRange.commonAncestorContainer)) {
+      selection.removeAllRanges();
+      selection.addRange(savedRange);
+      return;
+    }
+
+    placeCaretAtEnd();
+  }
+
+  function preserveEditorContent() {
+    if (!editorRef.current) {
+      return;
+    }
+
+    const cleanContent = sanitizeHtml(editorRef.current.innerHTML || "");
+    setForm((current) => ({
+      ...current,
+      content: cleanContent,
+    }));
+  }
+
+  function handleEditorMouseUp() {
+    saveEditorSelection();
+  }
+
+  function handleEditorKeyUp() {
+    saveEditorSelection();
     handleEditorInput();
-    setShowStylePanel(false);
+  }
+
+  function applyTextColor(color) {
+    const nextColor = activeTextColor === color ? defaultJournalTextColor : color;
+    restoreEditorSelection();
+    document.execCommand("styleWithCSS", false, true);
+    document.execCommand("foreColor", false, nextColor);
+    handleEditorInput();
+    saveEditorSelection();
+    setActiveTextColor(activeTextColor === color ? "" : color);
   }
 
   function insertTextEmote(emote) {
-    editorRef.current?.focus();
+    restoreEditorSelection();
     document.execCommand("insertText", false, emote);
     handleEditorInput();
+    saveEditorSelection();
     setShowEmotePanel(false);
   }
 
   function insertImageEmote(src) {
-    editorRef.current?.focus();
+    restoreEditorSelection();
     document.execCommand(
       "insertHTML",
       false,
       `<img class="journal-inline-emote" src="${src}" alt="emote" />`,
     );
     handleEditorInput();
+    saveEditorSelection();
     setShowEmotePanel(false);
   }
 
@@ -526,29 +625,35 @@ function JournalPage() {
     setCropDraft(null);
   }
 
-  function handleEmoteUpload(event) {
+  async function handleEmoteUpload(event) {
     const files = Array.from(event.target.files || []).slice(0, 12);
 
     if (files.length === 0) {
       return;
     }
 
-    Promise.all(
-      files.map(
-        (file) =>
-          new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(String(reader.result || ""));
-            reader.readAsDataURL(file);
-          }),
-      ),
-    ).then((images) => {
+    try {
+      const images = [];
+
+      for (const file of files) {
+        // eslint-disable-next-line no-await-in-loop
+        const result = await uploadEditorImage(file, {
+          module: "journal",
+          tags: "#emote-nhat-ky",
+          note: "Emote ảnh trong nhật ký",
+        });
+        images.push(result.inlineUrl);
+      }
+
       setForm((current) => ({
         ...current,
         customEmotes: [...current.customEmotes, ...images].slice(-24),
       }));
       setShowEmotePanel(false);
-    });
+    } catch (err) {
+      console.error(err);
+      setError("Không tải được emote ảnh lên backend.");
+    }
 
     event.target.value = "";
   }
@@ -807,13 +912,24 @@ function JournalPage() {
           style={editorStyle}
         >
           <div className="journal-editor-toolbar">
-            <button type="button" onClick={() => setView("home")}>
+            <button
+              type="button"
+              onClick={() => {
+                preserveEditorContent();
+                setView("home");
+              }}
+            >
               ‹
             </button>
 
             <div className="journal-editor-switches">
               <button
                 type="button"
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  preserveEditorContent();
+                  saveEditorSelection();
+                }}
                 onClick={() => {
                   setShowStylePanel((current) => !current);
                   setShowEmotePanel(false);
@@ -823,6 +939,11 @@ function JournalPage() {
               </button>
               <button
                 type="button"
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  preserveEditorContent();
+                  saveEditorSelection();
+                }}
                 onClick={() => {
                   setShowEmotePanel((current) => !current);
                   setShowStylePanel(false);
@@ -830,12 +951,25 @@ function JournalPage() {
               >
                 Emote
               </button>
-              <button type="button" onClick={() => setShowMoodPicker(true)}>
+              <button
+                type="button"
+                onClick={() => {
+                  preserveEditorContent();
+                  setShowMoodPicker(true);
+                }}
+              >
                 {getMood(form.moodId).icon}
               </button>
             </div>
 
-            <button className="journal-save-button" type="button" onClick={handleSave}>
+            <button
+              className="journal-save-button"
+              type="button"
+              onClick={() => {
+                preserveEditorContent();
+                handleSave();
+              }}
+            >
               {saving ? "Đang lưu" : "Lưu"}
             </button>
           </div>
@@ -855,8 +989,10 @@ function JournalPage() {
                   {textColors.map((color) => (
                     <button
                       key={color}
+                      className={activeTextColor === color ? "active" : ""}
                       type="button"
                       style={{ backgroundColor: color }}
+                      onMouseDown={(event) => event.preventDefault()}
                       onClick={() => applyTextColor(color)}
                       title={color}
                     />
@@ -876,6 +1012,11 @@ function JournalPage() {
                         }`}
                         key={background.id}
                         type="button"
+                        onMouseDown={(event) => {
+                          event.preventDefault();
+                          preserveEditorContent();
+                          saveEditorSelection();
+                        }}
                         onClick={() => {
                           setForm((current) => ({
                             ...current,
@@ -892,6 +1033,11 @@ function JournalPage() {
                       form.backgroundId === "custom" ? "active" : ""
                     }`}
                     type="button"
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      preserveEditorContent();
+                      saveEditorSelection();
+                    }}
                     onClick={() => {
                       if (form.backgroundImage) {
                         setForm((current) => ({
@@ -914,6 +1060,11 @@ function JournalPage() {
               <button
                 className="journal-upload-button"
                 type="button"
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  preserveEditorContent();
+                  saveEditorSelection();
+                }}
                 onClick={() => backgroundInputRef.current?.click()}
               >
                 Tải ảnh nền và chỉnh khung
@@ -938,6 +1089,7 @@ function JournalPage() {
                       <button
                         key={emote}
                         type="button"
+                        onMouseDown={(event) => event.preventDefault()}
                         onClick={() => insertTextEmote(emote)}
                       >
                         {emote}
@@ -956,6 +1108,7 @@ function JournalPage() {
                         className="journal-image-emote-button"
                         key={`${src.slice(0, 28)}-${index}`}
                         type="button"
+                        onMouseDown={(event) => event.preventDefault()}
                         onClick={() => insertImageEmote(src)}
                       >
                         <img alt="emote" src={src} />
@@ -968,6 +1121,11 @@ function JournalPage() {
               <button
                 className="journal-upload-button"
                 type="button"
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  preserveEditorContent();
+                  saveEditorSelection();
+                }}
                 onClick={() => emoteInputRef.current?.click()}
               >
                 Thêm emote ảnh
@@ -983,7 +1141,10 @@ function JournalPage() {
           <button
             className="journal-mood-badge"
             type="button"
-            onClick={() => setShowMoodPicker(true)}
+            onClick={() => {
+              preserveEditorContent();
+              setShowMoodPicker(true);
+            }}
           >
             {getMood(form.moodId).icon}
           </button>
@@ -1003,9 +1164,11 @@ function JournalPage() {
             }`}
             contentEditable
             data-placeholder="Ghi lại ngày hôm nay của bạn..."
-            dangerouslySetInnerHTML={{ __html: sanitizeHtml(form.content) }}
             key={`${form.id || "new"}-${form.targetDate}`}
             onInput={handleEditorInput}
+            onKeyUp={handleEditorKeyUp}
+            onMouseUp={handleEditorMouseUp}
+            onBlur={handleEditorInput}
             onPaste={handleEditorPaste}
             onDrop={handleEditorDrop}
             ref={editorRef}
@@ -1130,9 +1293,10 @@ function JournalPage() {
                     className={form.moodId === mood.id ? "active" : ""}
                     key={mood.id}
                     type="button"
-                    onClick={() =>
-                      setForm((current) => ({ ...current, moodId: mood.id }))
-                    }
+                    onClick={() => {
+                      preserveEditorContent();
+                      setForm((current) => ({ ...current, moodId: mood.id }));
+                    }}
                   >
                     <span>{mood.icon}</span>
                     <strong>{mood.label}</strong>
@@ -1143,7 +1307,10 @@ function JournalPage() {
               <button
                 className="journal-done-button"
                 type="button"
-                onClick={() => setShowMoodPicker(false)}
+                onClick={() => {
+                  preserveEditorContent();
+                  setShowMoodPicker(false);
+                }}
               >
                 Xong
               </button>

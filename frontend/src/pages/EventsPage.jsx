@@ -27,6 +27,12 @@ const eventTypes = {
     color: "#2563eb",
     description: "Nộp bài, báo cáo, đồ án",
   },
+  holiday: {
+    label: "Ngày lễ",
+    short: "NL",
+    color: "#dc2626",
+    description: "Ngày lễ, kỷ niệm và mốc văn hóa",
+  },
   meeting: {
     label: "Cuộc hẹn",
     short: "CH",
@@ -74,6 +80,7 @@ const filterOptions = [
   { id: "today", label: "Hôm nay" },
   { id: "week", label: "7 ngày tới" },
   { id: "birthday", label: "Sinh nhật" },
+  { id: "holiday", label: "Ngày lễ" },
   { id: "study", label: "Học tập" },
   { id: "personal", label: "Cá nhân" },
   { id: "past", label: "Đã qua" },
@@ -92,8 +99,33 @@ const initialForm = {
   repeat_type: "none",
   status: "upcoming",
   color: eventTypes.assignment.color,
+  calendar_mode: "solar",
   note: "",
 };
+
+const eventMetaPattern = /\n?\n?\[\[event_meta:(.*?)\]\]\s*$/;
+
+const solarHolidayTemplates = [
+  { id: "new-year", title: "Tết Dương lịch", month: 1, day: 1, note: "Ngày nghỉ lễ đầu năm." },
+  { id: "valentine", title: "Valentine", month: 2, day: 14, note: "Ngày lễ tình yêu." },
+  { id: "women-world", title: "Ngày Quốc tế Phụ nữ", month: 3, day: 8, note: "8/3 - ngày tôn vinh phụ nữ." },
+  { id: "reunification", title: "Ngày Giải phóng miền Nam", month: 4, day: 30, note: "30/4 - ngày nghỉ lễ." },
+  { id: "labor", title: "Ngày Quốc tế Lao động", month: 5, day: 1, note: "1/5 - ngày nghỉ lễ." },
+  { id: "national-day", title: "Quốc khánh Việt Nam", month: 9, day: 2, note: "2/9 - ngày nghỉ lễ." },
+  { id: "women-vn", title: "Ngày Phụ nữ Việt Nam", month: 10, day: 20, note: "20/10 - ngày tôn vinh phụ nữ Việt Nam." },
+  { id: "teachers", title: "Ngày Nhà giáo Việt Nam", month: 11, day: 20, note: "20/11 - ngày tri ân thầy cô." },
+  { id: "christmas", title: "Giáng sinh", month: 12, day: 25, note: "Noel / Christmas." },
+];
+
+const lunarHolidayTemplates = [
+  { id: "tet", title: "Tết Nguyên đán", month: 1, day: 1, note: "Mùng 1 Tết âm lịch." },
+  { id: "lantern", title: "Rằm tháng Giêng", month: 1, day: 15, note: "Tết Nguyên tiêu, ngày 15/1 âm lịch." },
+  { id: "hung-kings", title: "Giỗ Tổ Hùng Vương", month: 3, day: 10, note: "Ngày 10/3 âm lịch." },
+  { id: "vesak", title: "Lễ Phật đản", month: 4, day: 15, note: "Ngày 15/4 âm lịch." },
+  { id: "doan-ngo", title: "Tết Đoan Ngọ", month: 5, day: 5, note: "Ngày 5/5 âm lịch." },
+  { id: "vu-lan", title: "Lễ Vu Lan", month: 7, day: 15, note: "Ngày 15/7 âm lịch." },
+  { id: "mid-autumn", title: "Tết Trung Thu", month: 8, day: 15, note: "Ngày 15/8 âm lịch." },
+];
 
 function getTodayKey() {
   return formatDateKey(new Date());
@@ -107,8 +139,117 @@ function formatDateKey(date) {
   return `${year}-${month}-${day}`;
 }
 
+function formatDatePartsKey(year, month, day) {
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
 function dateFromKey(dateKey) {
   return new Date(`${dateKey}T00:00:00`);
+}
+
+function parseEventMeta(note = "") {
+  const match = String(note || "").match(eventMetaPattern);
+
+  if (!match) {
+    return {};
+  }
+
+  try {
+    const meta = JSON.parse(match[1]);
+    return meta && typeof meta === "object" ? meta : {};
+  } catch {
+    return {};
+  }
+}
+
+function cleanEventNote(note = "") {
+  return String(note || "").replace(eventMetaPattern, "").trim();
+}
+
+function encodeEventNote(note = "", meta = {}) {
+  const cleanNote = cleanEventNote(note);
+  const metaText = JSON.stringify(meta);
+
+  return `${cleanNote}${cleanNote ? "\n\n" : ""}[[event_meta:${metaText}]]`;
+}
+
+function getEventCalendarMode(event) {
+  return event.calendar_mode || parseEventMeta(event.note).calendarMode || "solar";
+}
+
+function findSolarDateForLunar(year, lunarMonth, lunarDay) {
+  let formatter;
+
+  try {
+    formatter = new Intl.DateTimeFormat("vi-VN-u-ca-chinese", {
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+    });
+  } catch {
+    return null;
+  }
+
+  const start = new Date(year, 0, 1, 12);
+  const end = new Date(year, 11, 31, 12);
+
+  for (const date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
+    const parts = formatter.formatToParts(date).reduce((result, part) => {
+      result[part.type] = Number(part.value);
+      return result;
+    }, {});
+
+    const lunarYear = parts.relatedYear || parts.year;
+
+    if (lunarYear === year && parts.month === lunarMonth && parts.day === lunarDay) {
+      return formatDateKey(date);
+    }
+  }
+
+  return null;
+}
+
+function buildHolidayEvent(template, year, dateKey, calendarMode) {
+  return {
+    id: `builtin-${calendarMode}-${year}-${template.id}`,
+    title: template.title,
+    event_date: dateKey,
+    event_time: null,
+    event_type: "holiday",
+    priority: "medium",
+    location: null,
+    reminder_before: 0,
+    status: "upcoming",
+    color: eventTypes.holiday.color,
+    repeat_type: "yearly",
+    note: `${template.note} (${calendarMode === "lunar" ? "âm lịch" : "dương lịch"})`,
+    calendar_mode: calendarMode,
+    is_builtin: true,
+  };
+}
+
+function buildBuiltinHolidayEvents(years) {
+  const uniqueYears = [...new Set(years.filter(Boolean))];
+
+  return uniqueYears.flatMap((year) => {
+    const solarEvents = solarHolidayTemplates.map((template) =>
+      buildHolidayEvent(
+        template,
+        year,
+        formatDatePartsKey(year, template.month, template.day),
+        "solar",
+      ),
+    );
+
+    const lunarEvents = lunarHolidayTemplates
+      .map((template) => {
+        const dateKey = findSolarDateForLunar(year, template.month, template.day);
+        return dateKey ? buildHolidayEvent(template, year, dateKey, "lunar") : null;
+      })
+      .filter(Boolean);
+
+    return [...solarEvents, ...lunarEvents];
+  });
 }
 
 function getMonthStart(date) {
@@ -374,7 +515,9 @@ function buildPayload(form) {
     status: form.status || "upcoming",
     color: form.color || eventTypes[form.event_type]?.color || eventTypes.other.color,
     repeat_type: form.repeat_type,
-    note: form.note.trim() || null,
+    note: encodeEventNote(form.note, {
+      calendarMode: form.calendar_mode || "solar",
+    }),
   };
 }
 
@@ -417,7 +560,12 @@ function EventsPage() {
   }
 
   function openEditForm(event) {
+    if (event.is_builtin) {
+      return;
+    }
+
     const type = event.event_type || "other";
+    const meta = parseEventMeta(event.note);
 
     setForm({
       title: event.title || "",
@@ -430,7 +578,8 @@ function EventsPage() {
       repeat_type: event.repeat_type || "none",
       status: event.status || "upcoming",
       color: event.color || eventTypes[type]?.color || eventTypes.other.color,
-      note: event.note || "",
+      calendar_mode: meta.calendarMode || event.calendar_mode || "solar",
+      note: cleanEventNote(event.note),
     });
     setEditingId(event.id);
     setShowComposer(true);
@@ -508,8 +657,12 @@ function EventsPage() {
 
   const stats = useMemo(() => {
     const today = getTodayKey();
+    const allEvents = [
+      ...buildBuiltinHolidayEvents([dateFromKey(today).getFullYear(), calendarMonth.getFullYear()]),
+      ...events,
+    ];
 
-    return events.reduce(
+    return allEvents.reduce(
       (result, event) => {
         const daysLeft = getDaysLeft(getEffectiveDateKey(event));
 
@@ -533,20 +686,31 @@ function EventsPage() {
       },
       { today: 0, week: 0, birthdays: 0, past: 0 },
     );
-  }, [events]);
+  }, [calendarMonth, events]);
+
+  const builtinHolidayEvents = useMemo(
+    () => buildBuiltinHolidayEvents([new Date().getFullYear(), calendarMonth.getFullYear()]),
+    [calendarMonth],
+  );
+
+  const allEvents = useMemo(
+    () => [...builtinHolidayEvents, ...events],
+    [builtinHolidayEvents, events],
+  );
 
   const filteredEvents = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
 
-    return events.filter((event) => {
+    return allEvents.filter((event) => {
       const effectiveDateKey = getEffectiveDateKey(event);
       const daysLeft = getDaysLeft(effectiveDateKey);
       const type = event.event_type || "other";
       const haystack = [
         event.title,
-        event.note,
+        cleanEventNote(event.note),
         event.location,
         eventTypes[type]?.label,
+        getEventCalendarMode(event) === "lunar" ? "âm lịch lịch âm" : "dương lịch",
       ]
         .filter(Boolean)
         .join(" ")
@@ -572,6 +736,10 @@ function EventsPage() {
         return type === "birthday";
       }
 
+      if (activeFilter === "holiday") {
+        return type === "holiday";
+      }
+
       if (activeFilter === "study") {
         return ["exam", "assignment"].includes(type);
       }
@@ -595,14 +763,14 @@ function EventsPage() {
 
       return normalizeTime(left.event_time).localeCompare(normalizeTime(right.event_time));
     });
-  }, [activeFilter, calendarMonth, events, searchTerm, selectedDateKey]);
+  }, [activeFilter, allEvents, calendarMonth, searchTerm, selectedDateKey]);
 
   const calendarCells = useMemo(() => {
     return getCalendarCells(calendarMonth);
   }, [calendarMonth]);
 
   const calendarEventsByDate = useMemo(() => {
-    return events.reduce((result, event) => {
+    return allEvents.reduce((result, event) => {
       getEventDateKeysForMonth(event, calendarMonth).forEach((dateKey) => {
         if (!result[dateKey]) {
           result[dateKey] = [];
@@ -613,7 +781,7 @@ function EventsPage() {
 
       return result;
     }, {});
-  }, [calendarMonth, events]);
+  }, [allEvents, calendarMonth]);
 
   const selectedDateEvents = selectedDateKey
     ? calendarEventsByDate[selectedDateKey] || []
@@ -849,6 +1017,8 @@ function EventsPage() {
                         const type = event.event_type || "other";
                         const typeInfo = eventTypes[type] || eventTypes.other;
                         const isDone = event.status === "done";
+                        const noteText = cleanEventNote(event.note);
+                        const calendarMode = getEventCalendarMode(event);
                         const displayDateKey =
                           selectedDateKey &&
                           getEventDateKeysForMonth(event, calendarMonth).includes(
@@ -905,30 +1075,38 @@ function EventsPage() {
                                 {event.repeat_type && event.repeat_type !== "none" && (
                                   <span>Lặp lại</span>
                                 )}
+                                {calendarMode === "lunar" && <span>Âm lịch</span>}
+                                {event.is_builtin && <span>Mặc định</span>}
                                 {event.location && <span>{event.location}</span>}
                               </div>
 
-                              {event.note && <p className="event-note">{event.note}</p>}
+                              {noteText && <p className="event-note">{noteText}</p>}
 
                               <div className="event-card-actions">
-                                <button type="button" onClick={() => openEditForm(event)}>
-                                  Sửa
-                                </button>
-                                {!isDone && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleMarkDone(event)}
-                                  >
-                                    Hoàn thành
-                                  </button>
+                                {event.is_builtin ? (
+                                  <span className="event-readonly-badge">Ngày lễ hệ thống</span>
+                                ) : (
+                                  <>
+                                    <button type="button" onClick={() => openEditForm(event)}>
+                                      Sửa
+                                    </button>
+                                    {!isDone && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleMarkDone(event)}
+                                      >
+                                        Hoàn thành
+                                      </button>
+                                    )}
+                                    <button
+                                      className="delete"
+                                      type="button"
+                                      onClick={() => handleDeleteEvent(event.id)}
+                                    >
+                                      Xóa
+                                    </button>
+                                  </>
                                 )}
-                                <button
-                                  className="delete"
-                                  type="button"
-                                  onClick={() => handleDeleteEvent(event.id)}
-                                >
-                                  Xóa
-                                </button>
                               </div>
                             </div>
                           </article>
@@ -1065,6 +1243,19 @@ function EventsPage() {
                   </select>
                 </label>
               </div>
+
+              <label>
+                Cách tính lịch
+                <select
+                  value={form.calendar_mode}
+                  onChange={(event) =>
+                    setForm({ ...form, calendar_mode: event.target.value })
+                  }
+                >
+                  <option value="solar">Dương lịch</option>
+                  <option value="lunar">Âm lịch / ngày giỗ</option>
+                </select>
+              </label>
 
               <label>
                 Màu nhấn

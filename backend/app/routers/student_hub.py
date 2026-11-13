@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.gamification import build_gamification_summary
+from app.services.gamification_service import build_gamification_summary
 from app.html_sanitizer import sanitize_rich_html
 from app.models.attendance_record import AttendanceRecord
 from app.models.deadline import Deadline

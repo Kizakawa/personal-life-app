@@ -191,9 +191,6 @@ def delete_expense_category(category_id: int, db: Session = Depends(get_db)):
     if not category:
         raise HTTPException(status_code=404, detail="Không tìm thấy danh mục")
 
-    if category.is_default:
-        raise HTTPException(status_code=400, detail="Không thể xóa danh mục mặc định")
-
     used = db.query(Expense).filter(Expense.category == category.value).first()
 
     if used:

@@ -31,6 +31,13 @@ from app.schemas.ai import (
     AIChatResponse,
     AISettingsResponse,
     AISettingsUpdate,
+    ExecuteActionRequest,
+    ExecuteActionResponse,
+    ExecuteBatchScheduleRequest,
+    ExecuteBatchScheduleResponse,
+    ProposeActionResponse,
+    QuickScheduleRequest,
+    QuickScheduleResponse,
 )
 
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
@@ -46,6 +53,7 @@ AI_VISION_MODEL = "gemini-1.5-flash"
 AI_RATE_LIMIT_MESSAGE = (
     "Trợ lý AI đang suy nghĩ hơi nhiều, bạn nạp năng lượng đợi 1 phút rồi thử lại nhé!"
 )
+AI_GENERIC_ERROR_MESSAGE = "Không gọi được Gemini lúc này."
 
 
 def get_ai_settings_payload(db: Session) -> AISettingsResponse:
@@ -89,6 +97,35 @@ def is_rate_limit_error(error: Exception | str) -> bool:
         or "rate limit" in text
         or "resource_exhausted" in text
     )
+
+
+def build_gemini_error_message(error: Exception | str) -> str:
+    text = str(error)
+    normalized = text.lower()
+
+    if is_rate_limit_error(text):
+        return AI_RATE_LIMIT_MESSAGE
+
+    if any(keyword in normalized for keyword in ["api key not valid", "api_key_invalid", "invalid api key"]):
+        return "Gemini API Key không hợp lệ. Hãy kiểm tra lại key trong Cài đặt -> Trợ lý AI."
+
+    if any(keyword in normalized for keyword in ["permission denied", "forbidden", "403"]):
+        return "Gemini từ chối quyền truy cập. Key có thể chưa bật API, bị giới hạn dự án hoặc bị chặn quyền."
+
+    if any(keyword in normalized for keyword in ["not found", "404", "models/", "model"]):
+        return "Model Gemini không dùng được với key hiện tại. Hãy thử đổi model sang gemini-3.5-flash, gemini-2.0-flash hoặc gemini-1.5-flash."
+
+    if any(keyword in normalized for keyword in ["quota", "billing", "exceeded"]):
+        return "Gemini đang hết quota hoặc tài khoản/API key chưa đủ điều kiện sử dụng model này."
+
+    if any(keyword in normalized for keyword in ["ssl", "connection", "connect", "timeout", "network", "dns", "proxy"]):
+        return "Máy hiện không kết nối được tới Gemini. Hãy kiểm tra mạng, proxy/VPN, tường lửa hoặc phần mềm chặn kết nối."
+
+    compact = re.sub(r"\s+", " ", text).strip()
+    if compact:
+        return f"{AI_GENERIC_ERROR_MESSAGE} Lỗi gốc: {compact[:220]}"
+
+    return f"{AI_GENERIC_ERROR_MESSAGE} Hãy kiểm tra API key, model hoặc kết nối mạng."
 
 
 def ensure_ai_rate_limit(db: Session, user_id: int):
@@ -245,11 +282,12 @@ def stream_gemini(
     client = genai.Client(api_key=api_key)
     config = build_generation_config(types, system_instruction, json_mode=json_mode)
 
-    return client.models.generate_content_stream(
+    for chunk in client.models.generate_content_stream(
         model=model,
         contents=message,
         config=config,
-    )
+    ):
+        yield chunk
 
 
 def extract_json_payload(value: str | None) -> dict | None:
@@ -587,7 +625,7 @@ def chat(
         if is_rate_limit_error(exc):
             raise HTTPException(status_code=429, detail=AI_RATE_LIMIT_MESSAGE) from exc
 
-        answer = "Không gọi được Gemini lúc này. Hãy kiểm tra API key, model hoặc kết nối mạng."
+        answer = build_gemini_error_message(exc)
         error_message = str(exc)[:1000]
 
     latency_ms = int((time.perf_counter() - start) * 1000)
@@ -694,9 +732,7 @@ def chat_stream(
 
             if not answer_parts:
                 answer_parts.append(
-                    AI_RATE_LIMIT_MESSAGE
-                    if error_code == "rate_limit"
-                    else "Không gọi được Gemini lúc này. Hãy kiểm tra API key, model hoặc kết nối mạng."
+                    AI_RATE_LIMIT_MESSAGE if error_code == "rate_limit" else build_gemini_error_message(exc)
                 )
                 yield sse_event(
                     {
@@ -738,3 +774,243 @@ def chat_stream(
             stream_db.close()
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+@router.post("/quick-schedule", response_model=QuickScheduleResponse)
+def quick_schedule(
+    request: QuickScheduleRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    prompt = request.prompt.strip()
+    if not prompt:
+        raise HTTPException(status_code=400, detail="Vui lòng nhập câu lệnh thêm lịch học.")
+
+    # Lấy api_key và model
+    settings = get_setting_map(db)
+    api_key = os.getenv("GEMINI_API_KEY") or get_setting_value(db, "gemini_api_key")
+    model = settings.get("ai_model") or AI_DEFAULT_SETTINGS["ai_model"]
+
+    from datetime import time as dt_time
+    from app.models.schedule import Schedule
+    from app.models.subject import Subject
+    from app.services.ai_schedule_parser import parse_schedule_prompt
+
+    # Trích xuất thông tin lịch học
+    extraction = parse_schedule_prompt(prompt, api_key=api_key, model=model)
+
+    if extraction.missing_info:
+        return QuickScheduleResponse(
+            success=False,
+            message=extraction.missing_info,
+            data={"extraction": extraction.model_dump()},
+        )
+
+    # 1. Tìm hoặc tạo mới môn học
+    subject_name = extraction.subject_name.strip()
+    subject = (
+        db.query(Subject)
+        .filter(Subject.name.ilike(subject_name))
+        .first()
+    )
+
+    created_new_subject = False
+    if not subject:
+        subject = Subject(
+            name=subject_name,
+            room=extraction.room,
+            lecturer=extraction.teacher,
+            note=extraction.note,
+            progress_status="studying",
+        )
+        db.add(subject)
+        db.commit()
+        db.refresh(subject)
+        created_new_subject = True
+    else:
+        # Cập nhật thêm phòng / giảng viên nếu chưa có và đảm bảo trạng thái là studying
+        updated = False
+        if extraction.room and not subject.room:
+            subject.room = extraction.room
+            updated = True
+        if extraction.teacher and not subject.lecturer:
+            subject.lecturer = extraction.teacher
+            updated = True
+        if subject.progress_status != "studying":
+            subject.progress_status = "studying"
+            updated = True
+        if updated:
+            db.commit()
+            db.refresh(subject)
+
+    # 2. Parse giờ bắt đầu và kết thúc
+    start_parts = extraction.start_time.split(":")
+    end_parts = extraction.end_time.split(":")
+    start_t = dt_time(int(start_parts[0]), int(start_parts[1]))
+    end_t = dt_time(int(end_parts[0]), int(end_parts[1]))
+
+    # 3. Kiểm tra trùng/xung đột giờ học
+    day_val = extraction.day_of_week
+    existing_schedules = (
+        db.query(Schedule)
+        .filter(Schedule.day_of_week == day_val)
+        .all()
+    )
+
+    conflict_warning = None
+    for sch in existing_schedules:
+        if start_t < sch.end_time and end_t > sch.start_time:
+            conflict_warning = (
+                f"Lưu ý: Đang trùng khung giờ với lịch '{sch.title}' "
+                f"({sch.start_time.strftime('%H:%M')} - {sch.end_time.strftime('%H:%M')})."
+            )
+            break
+
+    # 4. Tạo bản ghi Schedule
+    note_parts = []
+    if extraction.teacher:
+        note_parts.append(f"GV: {extraction.teacher}")
+    if extraction.note:
+        note_parts.append(extraction.note)
+    schedule_note = " · ".join(note_parts) if note_parts else None
+
+    new_schedule = Schedule(
+        day_of_week=day_val,
+        start_time=start_t,
+        end_time=end_t,
+        title=subject.name,
+        category="study",
+        location=extraction.room,
+        note=schedule_note,
+    )
+    db.add(new_schedule)
+    db.commit()
+    db.refresh(new_schedule)
+
+    # 5. Định dạng văn bản xác nhận
+    day_labels = {
+        1: "Chủ nhật",
+        2: "Thứ 2",
+        3: "Thứ 3",
+        4: "Thứ 4",
+        5: "Thứ 5",
+        6: "Thứ 6",
+        7: "Thứ 7",
+    }
+    day_text = day_labels.get(day_val, f"Thứ {day_val}")
+    time_text = f"{extraction.start_time} - {extraction.end_time}"
+    room_text = f", phòng {extraction.room}" if extraction.room else ""
+    teacher_text = f", {extraction.teacher}" if extraction.teacher else ""
+
+    confirm_msg = (
+        f"✅ Đã thêm môn **{subject.name}** vào **{day_text}** ({time_text}{room_text}{teacher_text})."
+    )
+    if created_new_subject:
+        confirm_msg += f"\n*(Đã tạo mới môn học '{subject.name}' trong danh sách môn)*"
+    if conflict_warning:
+        confirm_msg += f"\n⚠️ *{conflict_warning}*"
+
+    # 6. Lưu vào AIChatHistory
+    user_msg = AIChatHistory(
+        user_id=current_user.id,
+        role="user",
+        content=prompt,
+    )
+    db.add(user_msg)
+
+    action_payload = {
+        "type": "create_schedule",
+        "action": "create_schedule",
+        "subject_name": subject.name,
+        "subject_id": subject.id,
+        "schedule_id": new_schedule.id,
+        "day_of_week": day_val,
+        "day_label": day_text,
+        "start_time": extraction.start_time,
+        "end_time": extraction.end_time,
+        "room": extraction.room,
+        "teacher": extraction.teacher,
+        "created_new_subject": created_new_subject,
+        "conflict_warning": conflict_warning,
+    }
+
+    ai_msg = AIChatHistory(
+        user_id=current_user.id,
+        role="model",
+        content=confirm_msg,
+        suggested_action=json.dumps(action_payload, ensure_ascii=False),
+    )
+    db.add(ai_msg)
+    db.commit()
+
+    return QuickScheduleResponse(
+        success=True,
+        message=confirm_msg,
+        data=action_payload,
+    )
+
+
+@router.post("/schedule/propose", response_model=ProposeActionResponse)
+def propose_schedule(
+    request: QuickScheduleRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    prompt = (request.prompt or "").strip()
+    image_base64 = request.image_base64.strip() if request.image_base64 else None
+    image_mime_type = request.image_mime_type or "image/jpeg"
+    images = request.images or []
+
+    if not prompt and not image_base64 and not images:
+        raise HTTPException(status_code=400, detail="Vui lòng nhập câu lệnh hoặc đính kèm ảnh thời khóa biểu.")
+
+    if not prompt and (image_base64 or images):
+        prompt = "Trích xuất lịch học từ ảnh thời khóa biểu và tạo đề xuất thêm vào thời khóa biểu."
+
+    settings = get_setting_map(db)
+    api_key = os.getenv("GEMINI_API_KEY") or get_setting_value(db, "gemini_api_key")
+    model = settings.get("ai_model") or AI_DEFAULT_SETTINGS["ai_model"]
+
+    from app.services.schedule_agent import propose_schedule_action
+
+    return propose_schedule_action(
+        prompt=prompt,
+        db=db,
+        api_key=api_key,
+        model=model,
+        image_base64=image_base64,
+        image_mime_type=image_mime_type,
+        images=images,
+    )
+
+
+@router.post("/schedule/execute", response_model=ExecuteActionResponse)
+def execute_schedule(
+    request: ExecuteActionRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    from app.services.schedule_agent import execute_schedule_action
+
+    return execute_schedule_action(
+        request=request,
+        db=db,
+        current_user=current_user,
+    )
+
+
+@router.post("/schedule/execute-batch", response_model=ExecuteBatchScheduleResponse)
+def execute_batch_schedule(
+    request: ExecuteBatchScheduleRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    from app.services.schedule_agent import execute_batch_schedule_action
+
+    return execute_batch_schedule_action(
+        request=request,
+        db=db,
+        current_user=current_user,
+    )
+
+

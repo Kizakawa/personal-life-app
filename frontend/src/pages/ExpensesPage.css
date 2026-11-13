@@ -728,6 +728,46 @@
   gap: 18px;
 }
 
+.receipt-ai-panel {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
+  background:
+    linear-gradient(135deg, rgba(37, 99, 235, 0.1), transparent 62%),
+    #ffffff;
+}
+
+.receipt-ai-panel p {
+  margin: 0 0 6px;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.receipt-ai-panel h3 {
+  margin: 0 0 6px;
+}
+
+.receipt-ai-panel span {
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.receipt-ai-panel button {
+  min-width: 220px;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #ffffff;
+  cursor: pointer;
+  font-weight: 900;
+}
+
 .survival-overview {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -766,6 +806,11 @@
 .survival-category-list {
   display: grid;
   gap: 10px;
+}
+
+.survival-ai-button {
+  width: 100%;
+  margin: 4px 0 14px;
 }
 
 .survival-category {
@@ -830,7 +875,7 @@
 }
 
 .budget-management-card {
-  grid-template-columns: 54px minmax(0, 1fr) minmax(120px, auto) auto auto;
+  grid-template-columns: 54px minmax(0, 1fr) minmax(120px, auto) auto auto auto;
 }
 
 .category-management-card {
@@ -878,6 +923,7 @@
   cursor: pointer;
 }
 
+.budget-management-card button:last-child,
 .category-management-card button:last-child {
   background: #fee2e2;
   color: #dc2626;
@@ -996,8 +1042,14 @@
   .budget-management-card,
   .category-management-card,
   .category-management-list.compact .category-management-card,
+  .receipt-ai-panel,
   .form-two-columns {
     grid-template-columns: 1fr;
+  }
+
+  .receipt-ai-panel {
+    display: grid;
+    align-items: stretch;
   }
 
   .budget-management-card strong {

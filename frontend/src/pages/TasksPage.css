@@ -4,6 +4,41 @@
   gap: 22px;
 }
 
+.tasks-page.entry-mode::before {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  background: rgba(15, 23, 42, 0.34);
+  backdrop-filter: blur(3px);
+  content: "";
+}
+
+.tasks-page.entry-mode .tasks-side-column {
+  position: fixed;
+  inset: 42px 42px 32px auto;
+  z-index: 60;
+  width: min(760px, calc(100vw - 84px));
+  max-width: 760px;
+  overflow: auto;
+}
+
+.tasks-page.entry-mode .tasks-side-column .tasks-panel {
+  border-radius: 18px;
+  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.28);
+}
+
+.tasks-page.entry-mode .tasks-side-column > .tasks-panel:not(:first-child) {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .tasks-page.entry-mode .tasks-side-column {
+    inset: 16px;
+    width: auto;
+    max-width: none;
+  }
+}
+
 .tasks-header {
   display: flex;
   align-items: flex-start;
@@ -37,13 +72,14 @@
   gap: 12px;
   padding: 14px;
   flex-wrap: wrap;
+  justify-content: center;
 }
 
 .tasks-day-switcher label {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-width: 280px;
+  min-width: min(420px, 100%);
   padding: 8px 12px;
   border: 1px solid #e2e8f0;
   border-radius: 14px;

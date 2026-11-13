@@ -100,6 +100,41 @@
   color: #1d4ed8;
 }
 
+.learning-page.entry-mode::before {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  background: rgba(15, 23, 42, 0.34);
+  backdrop-filter: blur(3px);
+  content: "";
+}
+
+.learning-page.entry-mode .learning-side-column {
+  position: fixed;
+  inset: 42px 42px 32px auto;
+  z-index: 60;
+  width: min(760px, calc(100vw - 84px));
+  max-width: 760px;
+  overflow: auto;
+}
+
+.learning-page.entry-mode .learning-side-column .learning-panel {
+  border-radius: 18px;
+  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.28);
+}
+
+.learning-page.entry-mode .learning-side-column > .learning-panel:not(:first-child) {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .learning-page.entry-mode .learning-side-column {
+    inset: 16px;
+    width: auto;
+    max-width: none;
+  }
+}
+
 .learning-icon-button {
   width: 40px;
   height: 40px;

@@ -65,6 +65,34 @@
   background: #1d4ed8;
 }
 
+.projects-page.entry-mode::before {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  background: rgba(15, 23, 42, 0.34);
+  backdrop-filter: blur(3px);
+  content: "";
+}
+
+.projects-page.entry-mode .project-form-panel {
+  position: fixed;
+  inset: 42px 42px 32px auto;
+  z-index: 60;
+  width: min(760px, calc(100vw - 84px));
+  max-width: 760px;
+  overflow: auto;
+  border-radius: 18px;
+  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.28);
+}
+
+@media (max-width: 760px) {
+  .projects-page.entry-mode .project-form-panel {
+    inset: 16px;
+    width: auto;
+    max-width: none;
+  }
+}
+
 .projects-hero-panel {
   flex: 0 0 330px;
   display: grid;

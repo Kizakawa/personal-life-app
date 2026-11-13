@@ -431,7 +431,7 @@ function ProjectsPage() {
   }
 
   return (
-    <main className="projects-page">
+    <main className={`projects-page ${showForm ? "entry-mode" : ""}`}>
       <section className="projects-hero">
         <div className="projects-hero-main">
           <span className="projects-kicker">Không gian điều phối</span>

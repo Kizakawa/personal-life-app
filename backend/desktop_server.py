@@ -1,12 +1,12 @@
 import os
 
+os.environ.setdefault("PERSONAL_LIFE_APP_DESKTOP", "1")
+
 import uvicorn
 from app.main import app
 
 
 def main():
-    os.environ.setdefault("PERSONAL_LIFE_APP_DESKTOP", "1")
-
     uvicorn.run(
         app,
         host="127.0.0.1",

@@ -5,7 +5,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.gamification import record_gamification_event
+from app.services.gamification_service import record_gamification_event
 from app.html_sanitizer import sanitize_rich_html
 from app.models.workspace_item import WorkspaceItem
 from app.schemas.workspace_item import (

@@ -80,6 +80,7 @@ def search_workspace_items(db: Session, keyword: str):
 
     module_labels = {
         "study": "Học tập",
+        "class_notes": "Hỗ trợ ghi bài",
         "knowledge": "Kho tri thức",
         "exam": "Ôn thi",
         "documents": "Tài liệu",

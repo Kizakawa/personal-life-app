@@ -12,7 +12,6 @@ const initialForm = {
   lecturer: "",
   credits: "",
   room: "",
-  semester: "",
   attendance_limit: "3",
   target_score: "",
   progress_status: "studying",
@@ -20,24 +19,25 @@ const initialForm = {
 };
 
 const progressOptions = [
-  { value: "not_started", label: "Chưa học" },
   { value: "studying", label: "Đang học" },
   { value: "needs_review", label: "Cần xem lại" },
-  { value: "reviewed", label: "Đã ôn" },
+  { value: "completed", label: "Đã ôn / Đã xong" },
 ];
 
 const progressLabelMap = {
-  not_started: "Chưa học",
   studying: "Đang học",
   needs_review: "Cần xem lại",
+  completed: "Đã xong",
   reviewed: "Đã ôn",
+  not_started: "Chưa học",
 };
 
 const progressToneMap = {
-  not_started: "neutral",
   studying: "info",
   needs_review: "warning",
+  completed: "success",
   reviewed: "success",
+  not_started: "neutral",
 };
 
 function formatDate(value) {
@@ -56,7 +56,6 @@ function SubjectsPage() {
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
-  const [semesterFilter, setSemesterFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("name_asc");
   const [selectedId, setSelectedId] = useState(null);
@@ -84,49 +83,72 @@ function SubjectsPage() {
     }
   }
 
+  const totalCount = subjects.length;
+  const showGhostGuide = !loading && totalCount === 0;
+
+  const duplicateSubject = useMemo(() => {
+    const trimmed = form.name.trim().toLowerCase();
+    if (!trimmed) return null;
+    return subjects.find(
+      (item) => item.name.trim().toLowerCase() === trimmed && item.id !== editingId
+    );
+  }, [subjects, form.name, editingId]);
+
   useEffect(() => {
     loadSubjects();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const semesters = useMemo(() => {
-    return Array.from(
-      new Set(subjects.map((item) => item.semester).filter(Boolean))
-    ).sort((a, b) => a.localeCompare(b, "vi"));
-  }, [subjects]);
+  // Lắng nghe Domain Event Bus với Debounce 150ms và Edit Guard
+  useEffect(() => {
+    let timer = null;
+    function handleDataInvalidated(event) {
+      const { modules = [] } = event.detail || {};
+      if (!modules.includes("subjects")) return;
 
+      // Edit Guard: Không refetch ghi đè nếu form đang mở hoặc đang chỉnh sửa
+      if (showForm || editingId !== null) {
+        return;
+      }
+
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        loadSubjects();
+      }, 150);
+    }
+
+    window.addEventListener("app:data-invalidated", handleDataInvalidated);
+    return () => {
+      window.removeEventListener("app:data-invalidated", handleDataInvalidated);
+      clearTimeout(timer);
+    };
+  }, [showForm, editingId]);
+
+  // 4 Chỉ số KPI thống kê tương tác
   const stats = useMemo(() => {
     const totalCredits = subjects.reduce(
       (sum, item) => sum + (Number(item.credits) || 0),
       0
     );
 
-    const semesterCounter = subjects.reduce((accumulator, item) => {
-      const key = item.semester || "Chưa phân học kỳ";
-      accumulator[key] = (accumulator[key] || 0) + 1;
-      return accumulator;
-    }, {});
+    const studying = subjects.filter(
+      (item) => item.progress_status === "studying"
+    ).length;
 
-    const busiestSemesterEntry = Object.entries(semesterCounter).sort(
-      (a, b) => b[1] - a[1]
-    )[0];
+    const needsReview = subjects.filter(
+      (item) => item.progress_status === "needs_review"
+    ).length;
+
+    const completed = subjects.filter(
+      (item) => item.progress_status === "completed" || item.progress_status === "reviewed"
+    ).length;
 
     return {
       total: subjects.length,
       totalCredits,
-      studying: subjects.filter((item) => item.progress_status === "studying")
-        .length,
-      needsReview: subjects.filter(
-        (item) => item.progress_status === "needs_review"
-      ).length,
-      reviewed: subjects.filter((item) => item.progress_status === "reviewed")
-        .length,
-      notStarted: subjects.filter(
-        (item) => item.progress_status === "not_started"
-      ).length,
-      lecturers: new Set(subjects.map((item) => item.lecturer).filter(Boolean))
-        .size,
-      busiestSemester: busiestSemesterEntry?.[0] || "Chưa có",
+      studying,
+      needsReview,
+      completed,
     };
   }, [subjects]);
 
@@ -136,18 +158,20 @@ function SubjectsPage() {
     const filtered = subjects.filter((item) => {
       const matchesQuery =
         !keyword ||
-        [item.name, item.lecturer, item.room, item.semester, item.note]
+        [item.name, item.lecturer, item.room, item.note]
           .filter(Boolean)
           .some((value) => value.toLowerCase().includes(keyword));
 
-      const matchesSemester =
-        semesterFilter === "all" ||
-        (item.semester || "") === semesterFilter;
+      let matchesStatus = true;
+      if (statusFilter === "studying") {
+        matchesStatus = item.progress_status === "studying";
+      } else if (statusFilter === "needs_review") {
+        matchesStatus = item.progress_status === "needs_review";
+      } else if (statusFilter === "completed") {
+        matchesStatus = item.progress_status === "completed" || item.progress_status === "reviewed";
+      }
 
-      const matchesStatus =
-        statusFilter === "all" || item.progress_status === statusFilter;
-
-      return matchesQuery && matchesSemester && matchesStatus;
+      return matchesQuery && matchesStatus;
     });
 
     const sorted = [...filtered];
@@ -168,8 +192,9 @@ function SubjectsPage() {
         const rank = {
           needs_review: 0,
           studying: 1,
-          not_started: 2,
-          reviewed: 3,
+          completed: 2,
+          reviewed: 2,
+          not_started: 3,
         };
         sorted.sort(
           (a, b) =>
@@ -184,7 +209,7 @@ function SubjectsPage() {
     }
 
     return sorted;
-  }, [query, semesterFilter, sortBy, statusFilter, subjects]);
+  }, [query, sortBy, statusFilter, subjects]);
 
   const selectedSubject = useMemo(() => {
     return subjects.find((item) => item.id === selectedId) || null;
@@ -195,6 +220,7 @@ function SubjectsPage() {
       needs_review: 0,
       studying: 1,
       not_started: 2,
+      completed: 3,
       reviewed: 3,
     };
 
@@ -233,11 +259,11 @@ function SubjectsPage() {
       name: form.name.trim(),
       lecturer: form.lecturer.trim() || null,
       room: form.room.trim() || null,
-      semester: form.semester.trim() || null,
       note: form.note.trim() || null,
       credits: form.credits === "" ? null : Math.max(0, Number(form.credits) || 0),
       attendance_limit: form.attendance_limit === "" ? null : Math.max(0, Number(form.attendance_limit) || 0),
       target_score: form.target_score === "" ? null : Math.max(0, Number(form.target_score) || 0),
+      progress_status: form.progress_status || "studying",
     };
   }
 
@@ -246,6 +272,11 @@ function SubjectsPage() {
 
     if (!form.name.trim()) {
       alert("Vui lòng nhập tên môn học.");
+      return;
+    }
+
+    if (duplicateSubject) {
+      alert(`Môn học "${duplicateSubject.name}" đã tồn tại trong danh sách. Vui lòng kiểm tra lại.`);
       return;
     }
 
@@ -261,6 +292,16 @@ function SubjectsPage() {
       const preferredSelectedId = editingId;
       resetForm();
       await loadSubjects(preferredSelectedId);
+
+      // Phát Domain Event Bus để đồng bộ sang Schedules, Dashboard, StudentHub
+      window.dispatchEvent(
+        new CustomEvent("app:data-invalidated", {
+          detail: {
+            modules: ["subjects", "schedules", "dashboard", "student-hub"],
+            source: "subjects-page",
+          },
+        })
+      );
     } catch (error) {
       console.error(error);
       alert("Lưu môn học thất bại.");
@@ -276,7 +317,6 @@ function SubjectsPage() {
       lecturer: subject.lecturer || "",
       credits: subject.credits ?? "",
       room: subject.room || "",
-      semester: subject.semester || "",
       attendance_limit: subject.attendance_limit ?? "3",
       target_score: subject.target_score ?? "",
       progress_status: subject.progress_status || "studying",
@@ -294,6 +334,16 @@ function SubjectsPage() {
         resetForm();
       }
       await loadSubjects();
+
+      // Phát Domain Event Bus
+      window.dispatchEvent(
+        new CustomEvent("app:data-invalidated", {
+          detail: {
+            modules: ["subjects", "schedules", "dashboard", "student-hub"],
+            source: "subjects-page",
+          },
+        })
+      );
     } catch (error) {
       console.error(error);
       alert("Xóa môn học thất bại.");
@@ -302,7 +352,6 @@ function SubjectsPage() {
 
   function clearFilters() {
     setQuery("");
-    setSemesterFilter("all");
     setStatusFilter("all");
     setSortBy("name_asc");
   }
@@ -314,142 +363,202 @@ function SubjectsPage() {
   }
 
   return (
-    <div className="subjects-page">
+    <div className={`subjects-page ${showForm ? "entry-mode" : ""}`}>
+      {/* 3.1 Header Tinh Gọn với Nút + Thêm Môn góc phải */}
       <header className="page-header subjects-header">
-        <div>
-          <span className="subjects-section-label">SUBJECTS</span>
-          <h2>Môn học</h2>
-          <p>
-            Theo dõi toàn bộ môn học theo kiểu bảng dễ nhìn, lọc nhanh theo học kỳ,
-            tình trạng học và mở chi tiết từng môn để cập nhật khi cần.
+        <div className="subjects-header-left">
+          <div className="subjects-title-row">
+            <span className="subjects-section-label">SUBJECTS</span>
+            <h2>Môn học</h2>
+          </div>
+          <p className="subjects-subtitle">
+            Theo dõi môn học, trạng thái tiến độ và chi tiết học phần.
           </p>
         </div>
 
-        <button className="primary-button" type="button" onClick={startCreate}>
-          + Thêm môn học
+        <button className="primary-button compact-add-btn" type="button" onClick={startCreate}>
+          + Thêm môn
         </button>
       </header>
 
-      <section className="subjects-summary-grid">
-        <article className="subjects-summary-card emphasis">
-          <span>Tổng môn</span>
-          <strong>{stats.total}</strong>
-          <small>{stats.totalCredits} tín chỉ đang quản lý</small>
-        </article>
+      {/* 3.2 4 Thẻ KPI Tương Tác (Quick Tab Filter 1 Hàng Ngang) */}
+      <section className="subjects-kpi-grid">
+        <button
+          type="button"
+          className={`subjects-kpi-card ${statusFilter === "all" ? "is-active" : ""}`}
+          onClick={() => setStatusFilter("all")}
+          title="Xem tất cả môn học"
+        >
+          <div className="kpi-card-header">
+            <span className="kpi-label">Tổng môn</span>
+            <span className="kpi-tag">{stats.totalCredits} TC</span>
+          </div>
+          <strong className="kpi-value">{stats.total}</strong>
+          <small className="kpi-desc">Toàn bộ môn học</small>
+        </button>
 
-        <article className="subjects-summary-card">
-          <span>Đang học</span>
-          <strong>{stats.studying}</strong>
-          <small>Môn đang theo học hiện tại</small>
-        </article>
+        <button
+          type="button"
+          className={`subjects-kpi-card info ${statusFilter === "studying" ? "is-active" : ""}`}
+          onClick={() => setStatusFilter("studying")}
+          title="Lọc môn đang học"
+        >
+          <div className="kpi-card-header">
+            <span className="kpi-label">Đang học</span>
+            <span className="kpi-dot info" />
+          </div>
+          <strong className="kpi-value info">{stats.studying}</strong>
+          <small className="kpi-desc">Đang theo học hiện tại</small>
+        </button>
 
-        <article className="subjects-summary-card warning">
-          <span>Cần xem lại</span>
-          <strong>{stats.needsReview}</strong>
-          <small>Nên ưu tiên ôn tập hoặc bổ sung ghi chú</small>
-        </article>
+        <button
+          type="button"
+          className={`subjects-kpi-card warning ${statusFilter === "needs_review" ? "is-active" : ""}`}
+          onClick={() => setStatusFilter("needs_review")}
+          title="Lọc môn cần xem lại"
+        >
+          <div className="kpi-card-header">
+            <span className="kpi-label">Cần xem lại</span>
+            <span className="kpi-dot warning" />
+          </div>
+          <strong className="kpi-value warning">{stats.needsReview}</strong>
+          <small className="kpi-desc">Cần chú ý ôn tập / vắng</small>
+        </button>
 
-        <article className="subjects-summary-card success">
-          <span>Đã ôn</span>
-          <strong>{stats.reviewed}</strong>
-          <small>Đã hoàn thành hoặc ôn ổn</small>
-        </article>
-
-        <article className="subjects-summary-card">
-          <span>Giảng viên</span>
-          <strong>{stats.lecturers}</strong>
-          <small>Số giảng viên khác nhau</small>
-        </article>
-
-        <article className="subjects-summary-card">
-          <span>Học kỳ nổi bật</span>
-          <strong>{stats.busiestSemester}</strong>
-          <small>Nơi có nhiều môn nhất hiện tại</small>
-        </article>
+        <button
+          type="button"
+          className={`subjects-kpi-card success ${statusFilter === "completed" ? "is-active" : ""}`}
+          onClick={() => setStatusFilter("completed")}
+          title="Lọc môn đã hoàn thành"
+        >
+          <div className="kpi-card-header">
+            <span className="kpi-label">Đã ôn / Đã xong</span>
+            <span className="kpi-dot success" />
+          </div>
+          <strong className="kpi-value success">{stats.completed}</strong>
+          <small className="kpi-desc">Đã hoàn tất học phần</small>
+        </button>
       </section>
 
-      <section className="subjects-panel subjects-toolbar-panel">
-        <div className="subjects-toolbar">
-          <label className="subjects-field search-field">
-            <span>Tìm kiếm</span>
-            <input
-              type="text"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Tìm theo tên môn, giảng viên, học kỳ, phòng..."
-            />
-          </label>
+      {/* 3.3 Thanh Công Cụ Compact (Chiều cao <= 42px) */}
+      <section className="subjects-compact-toolbar">
+        <div className="toolbar-search-box">
+          <svg className="search-icon" viewBox="0 0 20 20" fill="currentColor" width="15" height="15">
+            <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+          </svg>
+          <input
+            type="text"
+            className="compact-search-input"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Tìm tên môn, giảng viên, phòng học..."
+          />
+          {query && (
+            <button className="clear-search-btn" type="button" onClick={() => setQuery("")} title="Xóa tìm kiếm">
+              ✕
+            </button>
+          )}
+        </div>
 
-          <label className="subjects-field">
-            <span>Học kỳ</span>
+        <div className="toolbar-actions">
+          <span className="toolbar-count">
+            Hiển thị <strong>{filteredSubjects.length}</strong> / {subjects.length} môn
+          </span>
+
+          <div className="toolbar-sort-wrap">
             <select
-              value={semesterFilter}
-              onChange={(event) => setSemesterFilter(event.target.value)}
+              className="compact-sort-select"
+              value={sortBy}
+              onChange={(event) => setSortBy(event.target.value)}
+              title="Sắp xếp danh sách"
             >
-              <option value="all">Tất cả học kỳ</option>
-              {semesters.map((semester) => (
-                <option key={semester} value={semester}>
-                  {semester}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="subjects-field">
-            <span>Trạng thái</span>
-            <select
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
-            >
-              <option value="all">Tất cả trạng thái</option>
-              {progressOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="subjects-field">
-            <span>Sắp xếp</span>
-            <select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
-              <option value="name_asc">Tên môn A-Z</option>
-              <option value="credits_desc">Tín chỉ cao đến thấp</option>
-              <option value="credits_asc">Tín chỉ thấp đến cao</option>
+              <option value="name_asc">Tên A-Z</option>
+              <option value="credits_desc">Tín chỉ cao - thấp</option>
+              <option value="credits_asc">Tín chỉ thấp - cao</option>
               <option value="updated_desc">Mới cập nhật</option>
-              <option value="status">Ưu tiên môn cần chú ý</option>
+              <option value="status">Ưu tiên cần xem lại</option>
             </select>
-          </label>
-        </div>
+          </div>
 
-        <div className="subjects-toolbar-footer">
-          <p>
-            Hiển thị <strong>{filteredSubjects.length}</strong> / {subjects.length} môn học.
-          </p>
-
-          <button className="text-button" type="button" onClick={clearFilters}>
-            Xóa bộ lọc
-          </button>
+          {(query || statusFilter !== "all") && (
+            <button className="reset-filter-btn" type="button" onClick={clearFilters} title="Đặt lại bộ lọc">
+              Đặt lại
+            </button>
+          )}
         </div>
       </section>
 
+      {/* 3.4 Bố Cục Above-The-Fold: Danh Sách Bảng và Khung Chi Tiết */}
       <div className="subjects-layout">
         <section className="subjects-panel subjects-list-panel">
           <div className="subjects-panel-header">
             <div>
               <h3>Bảng môn học</h3>
-              <p>Theo dõi nhanh và bấm vào từng dòng để xem chi tiết.</p>
+              <p>Bấm vào từng dòng để xem chi tiết hoặc chỉnh sửa.</p>
             </div>
           </div>
 
           {loading ? (
-            <p className="subjects-empty">Đang tải dữ liệu môn học...</p>
+            <div className="subjects-empty-state">
+              <p>Đang tải danh sách môn học...</p>
+            </div>
+          ) : showGhostGuide ? (
+            <div className="subjects-ghost-guide-box">
+              <div className="ghost-guide-header">
+                <span className="ghost-guide-badge">[Ví dụ mẫu]</span>
+                <strong>Chưa có môn học nào trong hệ thống</strong>
+              </div>
+              <p>
+                Danh sách môn học của bạn đang trống hoàn toàn. Khi bạn thêm môn học hoặc thời khóa biểu (bằng form hoặc Trợ lý AI), môn học sẽ tự động được liên kết và hiển thị ở đây.
+              </p>
+              <div className="subjects-table-wrapper">
+                <table className="subjects-table ghost-table">
+                  <thead>
+                    <tr>
+                      <th>Môn học</th>
+                      <th>Giảng viên</th>
+                      <th>Tín chỉ</th>
+                      <th>Phòng</th>
+                      <th>Trạng thái</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="ghost-guide-row">
+                      <td>
+                        <div className="subject-primary-cell">
+                          <strong>[Ví dụ mẫu] Học Máy Tính</strong>
+                          <span>Môn học mẫu minh họa</span>
+                        </div>
+                      </td>
+                      <td>Thầy Nam</td>
+                      <td>3</td>
+                      <td>A2-301</td>
+                      <td>
+                        <span className="subject-badge info">Đang học</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div className="ghost-guide-actions">
+                <button className="primary-button" type="button" onClick={startCreate}>
+                  + Thêm môn học đầu tiên
+                </button>
+              </div>
+            </div>
           ) : filteredSubjects.length === 0 ? (
             <div className="subjects-empty-state">
-              <h4>Không có môn học phù hợp</h4>
-              <p>Hãy đổi bộ lọc hoặc thêm môn học mới để bắt đầu quản lý.</p>
-              <button className="secondary-button" type="button" onClick={startCreate}>
-                Thêm môn học
+              <span className="empty-icon">🔍</span>
+              <h4>Không tìm thấy môn học phù hợp</h4>
+              <p>
+                Không có môn học nào khớp với từ khóa "{query}" hoặc bộ lọc đang chọn.
+              </p>
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={clearFilters}
+              >
+                Đặt lại bộ lọc
               </button>
             </div>
           ) : (
@@ -461,7 +570,6 @@ function SubjectsPage() {
                     <th>Giảng viên</th>
                     <th>Tín chỉ</th>
                     <th>Phòng</th>
-                    <th>Học kỳ</th>
                     <th>Trạng thái</th>
                     <th>Cập nhật</th>
                   </tr>
@@ -483,14 +591,15 @@ function SubjectsPage() {
                           </div>
                         </td>
                         <td>{subject.lecturer || "Chưa có"}</td>
-                        <td>{subject.credits || 0}</td>
+                        <td>
+                          <span className="credits-badge">{subject.credits || 0}</span>
+                        </td>
                         <td>{subject.room || "Chưa có"}</td>
-                        <td>{subject.semester || "Chưa có"}</td>
                         <td>
                           <span
                             className={`subject-badge ${progressToneMap[subject.progress_status] || "neutral"}`}
                           >
-                            {progressLabelMap[subject.progress_status] || "Không rõ"}
+                            {progressLabelMap[subject.progress_status] || "Đang học"}
                           </span>
                         </td>
                         <td>{formatDate(subject.updated_at)}</td>
@@ -510,13 +619,13 @@ function SubjectsPage() {
                 <h3>{showForm ? (editingId ? "Cập nhật môn học" : "Thêm môn học") : "Chi tiết môn học"}</h3>
                 <p>
                   {showForm
-                    ? "Điền thông tin môn học thật gọn, sau này sẽ dễ theo dõi hơn."
-                    : "Xem thông tin nhanh, cập nhật khi cần hoặc tạo môn học mới."}
+                    ? "Điền thông tin môn học thật gọn để theo dõi tiến độ."
+                    : "Xem thông tin nhanh hoặc chỉnh sửa khi cần."}
                 </p>
               </div>
 
               {!showForm && (
-                <button className="icon-button" type="button" onClick={startCreate}>
+                <button className="icon-button" type="button" onClick={startCreate} title="Thêm môn mới">
                   +
                 </button>
               )}
@@ -531,7 +640,13 @@ function SubjectsPage() {
                     value={form.name}
                     onChange={handleChange}
                     placeholder="Ví dụ: Xử lý ảnh số"
+                    autoFocus
                   />
+                  {duplicateSubject && (
+                    <span className="subjects-duplicate-hint">
+                      ⚠️ Môn học "{duplicateSubject.name}" đã tồn tại trong danh sách.
+                    </span>
+                  )}
                 </label>
 
                 <label className="subjects-field">
@@ -570,16 +685,6 @@ function SubjectsPage() {
 
                 <div className="subjects-two-columns">
                   <label className="subjects-field">
-                    <span>Học kỳ</span>
-                    <input
-                      name="semester"
-                      value={form.semester}
-                      onChange={handleChange}
-                      placeholder="Ví dụ: HK2 2026"
-                    />
-                  </label>
-
-                  <label className="subjects-field">
                     <span>Số buổi được vắng</span>
                     <input
                       type="number"
@@ -590,9 +695,7 @@ function SubjectsPage() {
                       placeholder="Ví dụ: 3"
                     />
                   </label>
-                </div>
 
-                <div className="subjects-two-columns">
                   <label className="subjects-field">
                     <span>Mục tiêu điểm</span>
                     <input
@@ -603,25 +706,25 @@ function SubjectsPage() {
                       name="target_score"
                       value={form.target_score}
                       onChange={handleChange}
-                      placeholder="Ví dụ: 8"
+                      placeholder="Ví dụ: 8.5"
                     />
                   </label>
-
-                  <label className="subjects-field">
-                    <span>Trạng thái</span>
-                    <select
-                      name="progress_status"
-                      value={form.progress_status}
-                      onChange={handleChange}
-                    >
-                      {progressOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
                 </div>
+
+                <label className="subjects-field">
+                  <span>Trạng thái môn học</span>
+                  <select
+                    name="progress_status"
+                    value={form.progress_status}
+                    onChange={handleChange}
+                  >
+                    {progressOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
                 <label className="subjects-field">
                   <span>Ghi chú</span>
@@ -630,7 +733,7 @@ function SubjectsPage() {
                     value={form.note}
                     onChange={handleChange}
                     placeholder="Tài liệu cần ôn, yêu cầu môn học, deadline kiểm tra, mẹo học..."
-                    rows="5"
+                    rows="3"
                   />
                 </label>
 
@@ -653,22 +756,18 @@ function SubjectsPage() {
                   <span
                     className={`subject-badge ${progressToneMap[selectedSubject.progress_status] || "neutral"}`}
                   >
-                    {progressLabelMap[selectedSubject.progress_status] || "Không rõ"}
+                    {progressLabelMap[selectedSubject.progress_status] || "Đang học"}
                   </span>
                 </div>
 
                 <div className="subject-detail-grid">
                   <article>
                     <span>Tín chỉ</span>
-                    <strong>{selectedSubject.credits || 0}</strong>
+                    <strong>{selectedSubject.credits || 0} TC</strong>
                   </article>
                   <article>
                     <span>Phòng học</span>
                     <strong>{selectedSubject.room || "Chưa có"}</strong>
-                  </article>
-                  <article>
-                    <span>Học kỳ</span>
-                    <strong>{selectedSubject.semester || "Chưa có"}</strong>
                   </article>
                   <article>
                     <span>Được vắng</span>
@@ -678,14 +777,10 @@ function SubjectsPage() {
                     <span>Mục tiêu điểm</span>
                     <strong>{selectedSubject.target_score ?? "Chưa đặt"}</strong>
                   </article>
-                  <article>
-                    <span>Cập nhật</span>
-                    <strong>{formatDate(selectedSubject.updated_at)}</strong>
-                  </article>
                 </div>
 
                 <div className="subject-detail-note">
-                  <span>Ghi chú</span>
+                  <span>Ghi chú môn học</span>
                   <p>
                     {selectedSubject.note ||
                       "Chưa có ghi chú. Bạn có thể thêm tài liệu, lưu ý ôn tập hoặc các thông tin quan trọng ở đây."}
@@ -698,14 +793,14 @@ function SubjectsPage() {
                     type="button"
                     onClick={() => handleEdit(selectedSubject)}
                   >
-                    Sửa
+                    Sửa thông tin
                   </button>
                   <button
                     className="danger-button"
                     type="button"
                     onClick={() => handleDelete(selectedSubject.id)}
                   >
-                    Xóa
+                    Xóa môn
                   </button>
                 </div>
               </div>
@@ -724,7 +819,7 @@ function SubjectsPage() {
             <div className="subjects-panel-header">
               <div>
                 <h3>Môn cần chú ý</h3>
-                <p>Gợi ý nhanh để biết môn nào nên ưu tiên xem lại.</p>
+                <p>Gợi ý nhanh để ưu tiên xem lại môn có nguy cơ hoặc cần ôn tập.</p>
               </div>
             </div>
 
@@ -742,13 +837,13 @@ function SubjectsPage() {
                     <div>
                       <strong>{subject.name}</strong>
                       <span>
-                        {subject.semester || "Chưa có học kỳ"} · {subject.credits || 0} tín chỉ
+                        {subject.credits ? `${subject.credits} tín chỉ` : "Chưa có tín chỉ"} · {subject.room ? `Phòng ${subject.room}` : (subject.lecturer || "Chưa có phòng")}
                       </span>
                     </div>
                     <span
                       className={`subject-badge ${progressToneMap[subject.progress_status] || "neutral"}`}
                     >
-                      {progressLabelMap[subject.progress_status] || "Không rõ"}
+                      {progressLabelMap[subject.progress_status] || "Đang học"}
                     </span>
                   </button>
                 ))}

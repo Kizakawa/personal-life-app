@@ -117,11 +117,16 @@ function hasTimeConflict(items, form, editingId) {
 
 function SchedulesPage() {
   const [schedules, setSchedules] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [activeDay, setActiveDay] = useState(2);
   const [form, setForm] = useState(initialForm);
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const [showDayPanel, setShowDayPanel] = useState(false);
   const [error, setError] = useState("");
+
+  const totalCount = schedules.length;
+  const showGhostGuide = !loading && totalCount === 0;
 
   const sortedSchedules = useMemo(() => sortByTime(schedules), [schedules]);
 
@@ -161,13 +166,45 @@ function SchedulesPage() {
 
   async function loadSchedules() {
     try {
+      setLoading(true);
       const data = await getSchedules();
       setSchedules(data);
       setError("");
     } catch {
       setError("Không tải được thời khóa biểu.");
+    } finally {
+      setLoading(false);
     }
   }
+
+  useEffect(() => {
+    loadSchedules();
+  }, []);
+
+  // Lắng nghe Domain Event Bus với Debounce 150ms và Edit Guard
+  useEffect(() => {
+    let timer = null;
+    function handleDataInvalidated(event) {
+      const { modules = [] } = event.detail || {};
+      if (!modules.includes("schedules")) return;
+
+      // Edit Guard: Không refetch ghi đè nếu form đang mở hoặc đang sửa
+      if (showForm || editingId !== null) {
+        return;
+      }
+
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        loadSchedules();
+      }, 150);
+    }
+
+    window.addEventListener("app:data-invalidated", handleDataInvalidated);
+    return () => {
+      window.removeEventListener("app:data-invalidated", handleDataInvalidated);
+      clearTimeout(timer);
+    };
+  }, [showForm, editingId]);
 
   function openCreateForm(dayValue = activeDay) {
     setEditingId(null);
@@ -177,10 +214,12 @@ function SchedulesPage() {
       day_of_week: dayValue,
     });
     setShowForm(true);
+    setShowDayPanel(true);
   }
 
-  function handleSelectDay(dayValue) {
+  function handleSelectDay(dayValue, openPanel = true) {
     setActiveDay(dayValue);
+    setShowDayPanel(openPanel);
 
     if (!editingId) {
       setForm((current) => ({
@@ -220,6 +259,16 @@ function SchedulesPage() {
       setEditingId(null);
       setShowForm(false);
       await loadSchedules();
+
+      // Phát Domain Event Bus để đồng bộ sang các module khác
+      window.dispatchEvent(
+        new CustomEvent("app:data-invalidated", {
+          detail: {
+            modules: ["schedules", "subjects", "dashboard", "student-hub"],
+            source: "schedules-form",
+          },
+        })
+      );
     } catch {
       setError("Không lưu được thời khóa biểu.");
     }
@@ -238,6 +287,7 @@ function SchedulesPage() {
       note: schedule.note || "",
     });
     setShowForm(true);
+    setShowDayPanel(true);
   }
 
   async function handleDelete(scheduleId) {
@@ -250,6 +300,16 @@ function SchedulesPage() {
     try {
       await deleteSchedule(scheduleId);
       await loadSchedules();
+
+      // Phát Domain Event Bus
+      window.dispatchEvent(
+        new CustomEvent("app:data-invalidated", {
+          detail: {
+            modules: ["schedules", "subjects", "dashboard", "student-hub"],
+            source: "schedules-form",
+          },
+        })
+      );
     } catch {
       setError("Không xóa được lịch.");
     }
@@ -263,6 +323,21 @@ function SchedulesPage() {
 
   useEffect(() => {
     loadSchedules();
+
+    function handleScheduleUpdated(event) {
+      loadSchedules();
+      if (event?.detail?.day_of_week) {
+        setActiveDay(Number(event.detail.day_of_week));
+      }
+    }
+
+    window.addEventListener("schedule-updated", handleScheduleUpdated);
+    window.addEventListener("personal-life:schedules-changed", handleScheduleUpdated);
+
+    return () => {
+      window.removeEventListener("schedule-updated", handleScheduleUpdated);
+      window.removeEventListener("personal-life:schedules-changed", handleScheduleUpdated);
+    };
   }, []);
 
   return (
@@ -313,7 +388,7 @@ function SchedulesPage() {
             <button
               className="schedule-add-button"
               type="button"
-              onClick={() => openCreateForm(activeDay)}
+            onClick={() => openCreateForm(activeDay)}
               title="Thêm lịch cho ngày đang chọn"
             >
               +
@@ -354,6 +429,7 @@ function SchedulesPage() {
                     const sessionItems = dayItems.filter(
                       (item) => getSessionByTime(item.start_time) === session.value,
                     );
+                    const isGhostSlot = showGhostGuide && day.value === 2 && session.value === "morning";
 
                     return (
                       <button
@@ -365,7 +441,19 @@ function SchedulesPage() {
                         onClick={() => handleSelectDay(day.value)}
                       >
                         {sessionItems.length === 0 ? (
-                          <span className="schedule-empty-cell">Trống</span>
+                          isGhostSlot ? (
+                            <span
+                              className="schedule-mini-card ghost-example-card tone-blue"
+                              title="Ví dụ mẫu - Chưa có lịch thật"
+                            >
+                              <span className="ghost-guide-pill">[Ví dụ mẫu]</span>
+                              <b>07:00 - 09:00</b>
+                              <span>Học Máy Tính</span>
+                              <small>Phòng A2-301</small>
+                            </span>
+                          ) : (
+                            <span className="schedule-empty-cell">Trống</span>
+                          )
                         ) : (
                           sessionItems.map((item) => {
                             const category = getCategoryMeta(item.category);
@@ -394,13 +482,22 @@ function SchedulesPage() {
           </div>
         </section>
 
-        <aside className="schedule-day-panel" aria-label="Chi tiết ngày">
+        {showDayPanel && <div className="schedule-day-backdrop" onClick={() => setShowDayPanel(false)} />}
+        <aside className={`schedule-day-panel ${showDayPanel ? "open" : ""}`} aria-label="Chi tiết ngày">
           <div className="schedule-day-top">
             <div>
               <p className="eyebrow">Chi tiết ngày</p>
               <h3>{getDayLabel(activeDay)}</h3>
               <span>{selectedSchedules.length} lịch đã lên</span>
             </div>
+            <button
+              className="schedule-close-button"
+              type="button"
+              onClick={() => setShowDayPanel(false)}
+              title="Đóng chi tiết ngày"
+            >
+              ×
+            </button>
             <button
               className="schedule-add-button compact"
               type="button"
@@ -519,9 +616,30 @@ function SchedulesPage() {
           )}
 
           <div className="schedule-detail-list">
-            {selectedSchedules.length === 0 ? (
+            {showGhostGuide ? (
+              <div className="schedule-ghost-guide-panel">
+                <div className="ghost-guide-badge">[Ví dụ mẫu]</div>
+                <h4>Chưa có lịch học nào trong hệ thống</h4>
+                <p>Thời khóa biểu của bạn đang trống. Bạn có thể:</p>
+                <ul>
+                  <li>Bấm nút <strong>"+"</strong> ở trên để tạo lịch thủ công.</li>
+                  <li>Hoặc mở <strong>Trợ lý AI</strong> ở góc dưới để thêm tự nhiên (VD: <em>"Thêm môn Triết thứ 2 từ 7h đến 9h"</em> hoặc dán ảnh TKB bằng Ctrl+V).</li>
+                </ul>
+                <div className="schedule-detail-card ghost-example-card tone-blue">
+                  <div className="schedule-detail-time">
+                    <strong>07:00 - 09:00</strong>
+                    <span>Học tập [Mẫu]</span>
+                  </div>
+                  <div className="schedule-detail-body">
+                    <h4>Học Máy Tính</h4>
+                    <p>Phòng A2-301 • Giảng viên: Thầy Nam</p>
+                    <small>Đây là thẻ mẫu minh họa cách hiển thị trên giao diện.</small>
+                  </div>
+                </div>
+              </div>
+            ) : selectedSchedules.length === 0 ? (
               <div className="schedule-empty-state">
-                <strong>Ngày này còn trống.</strong>
+                <strong>{getDayLabel(activeDay)} còn trống.</strong>
                 <p>Bấm nút + để thêm môn học, lịch tự học hoặc việc cá nhân.</p>
               </div>
             ) : (

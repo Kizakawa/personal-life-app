@@ -6,7 +6,15 @@ import {
   initDefaultSettings,
   updateSetting,
 } from "../api/settingsApi";
-import { changePassword, getCurrentUser, logout } from "../api/authApi";
+import {
+  changePassword,
+  getCurrentUser,
+  getRecoveryKey,
+  getSecurityQuestion,
+  logout,
+  regenerateRecoveryKey,
+  updateSecurityQuestion,
+} from "../api/authApi";
 import { getAISettings, updateAISettings } from "../api/aiApi";
 
 const initialForm = {
@@ -23,7 +31,7 @@ const initialPasswordForm = {
 
 const initialAISettings = {
   gemini_api_key: "",
-  ai_model: "gemini-2.0-flash",
+  ai_model: "gemini-3.5-flash",
   ai_allow_tasks: true,
   ai_allow_deadlines: true,
   ai_allow_schedule: true,
@@ -57,6 +65,15 @@ function SettingsPage() {
   const [aiSettings, setAISettings] = useState(initialAISettings);
   const [aiKeyInput, setAIKeyInput] = useState("");
 
+  const [securityQuestion, setSecurityQuestion] = useState("");
+  const [hasSecurityQuestion, setHasSecurityQuestion] = useState(false);
+  const [questionPreset, setQuestionPreset] = useState("Tên trường cấp 3 của bạn là gì?");
+  const [customQuestion, setCustomQuestion] = useState("");
+  const [securityAnswer, setSecurityAnswer] = useState("");
+  const [recoveryKey, setRecoveryKey] = useState("");
+  const [recoveryPath, setRecoveryPath] = useState("");
+  const [copiedRecovery, setCopiedRecovery] = useState(false);
+
   async function loadSettings() {
     try {
       setLoading(true);
@@ -74,6 +91,7 @@ function SettingsPage() {
     loadSettings();
     loadCurrentUser();
     loadAISettings();
+    loadSecuritySettings();
   }, []);
 
   async function loadCurrentUser() {
@@ -82,6 +100,77 @@ function SettingsPage() {
       setCurrentUser(user);
     } catch (err) {
       console.error(err);
+    }
+  }
+
+  async function loadSecuritySettings() {
+    try {
+      const qData = await getSecurityQuestion();
+      setSecurityQuestion(qData.security_question || "");
+      setHasSecurityQuestion(qData.has_security_question);
+      if (qData.security_question) {
+        setCustomQuestion(qData.security_question);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  async function handleLoadRecoveryKey() {
+    try {
+      const data = await getRecoveryKey();
+      setRecoveryKey(data.recovery_key);
+      setRecoveryPath(data.recovery_file_path);
+    } catch (err) {
+      console.error(err);
+      alert("Không tải được mã khôi phục.");
+    }
+  }
+
+  async function handleRegenerateRecoveryKey() {
+    if (!window.confirm("Bạn có chắc muốn tạo mã khôi phục mới? Mã cũ sẽ mất hiệu lực.")) return;
+    try {
+      const data = await regenerateRecoveryKey();
+      setRecoveryKey(data.recovery_key);
+      setRecoveryPath(data.recovery_file_path);
+      alert("Đã tạo mã khôi phục mới thành công!");
+    } catch (err) {
+      console.error(err);
+      alert("Tạo mã khôi phục thất bại.");
+    }
+  }
+
+  function handleCopyRecoveryKey() {
+    if (recoveryKey && navigator.clipboard) {
+      navigator.clipboard.writeText(recoveryKey);
+      setCopiedRecovery(true);
+      setTimeout(() => setCopiedRecovery(false), 2000);
+    }
+  }
+
+  async function handleUpdateSecurityQuestion(event) {
+    event.preventDefault();
+    const finalQuestion = questionPreset === "Tự nhập câu hỏi khác..." ? customQuestion.trim() : questionPreset;
+    if (!finalQuestion) {
+      alert("Vui lòng chọn hoặc nhập câu hỏi bảo mật.");
+      return;
+    }
+    if (!securityAnswer.trim()) {
+      alert("Vui lòng nhập câu trả lời bảo mật.");
+      return;
+    }
+    try {
+      await updateSecurityQuestion({
+        security_question: finalQuestion,
+        security_answer: securityAnswer.trim(),
+      });
+      setSecurityQuestion(finalQuestion);
+      setHasSecurityQuestion(true);
+      setSecurityAnswer("");
+      alert("Đã lưu câu hỏi bảo mật thành công!");
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Không lưu được câu hỏi bảo mật.");
     }
   }
 
@@ -334,6 +423,105 @@ function SettingsPage() {
               Đăng xuất
             </button>
           </form>
+
+          <hr style={{ margin: "24px 0", borderColor: "#e5e7eb" }} />
+
+          <h4>Câu hỏi bảo mật (Khôi phục mật khẩu)</h4>
+          <p className="empty" style={{ margin: "6px 0 14px" }}>
+            {hasSecurityQuestion
+              ? `Câu hỏi hiện tại: "${securityQuestion}"`
+              : "Chưa thiết lập câu hỏi bảo mật. Nên cài đặt để khôi phục khi quên mật khẩu."}
+          </p>
+
+          <form onSubmit={handleUpdateSecurityQuestion}>
+            <label>
+              Chọn câu hỏi
+              <select
+                value={questionPreset}
+                onChange={(e) => setQuestionPreset(e.target.value)}
+              >
+                <option value="Tên trường cấp 3 của bạn là gì?">Tên trường cấp 3 của bạn là gì?</option>
+                <option value="Thú cưng đầu tiên của bạn tên gì?">Thú cưng đầu tiên của bạn tên gì?</option>
+                <option value="Món ăn yêu thích nhất của bạn là gì?">Món ăn yêu thích nhất của bạn là gì?</option>
+                <option value="Tên người bạn thân thời thơ ấu?">Tên người bạn thân thời thơ ấu?</option>
+                <option value="Nơi bạn sinh ra hoặc lớn lên?">Nơi bạn sinh ra hoặc lớn lên?</option>
+                <option value="Tự nhập câu hỏi khác...">Tự nhập câu hỏi khác...</option>
+              </select>
+            </label>
+
+            {questionPreset === "Tự nhập câu hỏi khác..." && (
+              <label>
+                Câu hỏi tùy chỉnh
+                <input
+                  value={customQuestion}
+                  onChange={(e) => setCustomQuestion(e.target.value)}
+                  placeholder="Nhập câu hỏi của riêng bạn"
+                />
+              </label>
+            )}
+
+            <label>
+              Câu trả lời bảo mật
+              <input
+                value={securityAnswer}
+                onChange={(e) => setSecurityAnswer(e.target.value)}
+                placeholder="Nhập câu trả lời mới..."
+                autoComplete="off"
+              />
+            </label>
+
+            <button className="primary-button" type="submit">
+              Lưu câu hỏi bảo mật
+            </button>
+          </form>
+
+          <hr style={{ margin: "24px 0", borderColor: "#e5e7eb" }} />
+
+          <h4>Mã khôi phục dự phòng (Recovery Key)</h4>
+          <p className="empty" style={{ margin: "6px 0 14px" }}>
+            Dùng mã này để đặt lại mật khẩu khẩn cấp khi bạn quên mật khẩu và câu hỏi bảo mật.
+          </p>
+
+          {recoveryKey ? (
+            <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: 14, marginBottom: 14 }}>
+              <small style={{ color: "#64748b", display: "block", marginBottom: 4 }}>MÃ KHÔI PHỤC HIỆN TẠI:</small>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <code style={{ fontSize: 18, fontWeight: 700, color: "#166534", letterSpacing: 1.5, background: "#dcfce7", padding: "6px 12px", borderRadius: 6 }}>
+                  {recoveryKey}
+                </code>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  style={{ padding: "6px 12px", fontSize: 13 }}
+                  onClick={handleCopyRecoveryKey}
+                >
+                  {copiedRecovery ? "✓ Đã copy" : "Sao chép"}
+                </button>
+              </div>
+              {recoveryPath && (
+                <small style={{ color: "#64748b", display: "block", fontSize: 12 }}>
+                  File dự phòng: <code>{recoveryPath}</code>
+                </small>
+              )}
+            </div>
+          ) : (
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={handleLoadRecoveryKey}
+              style={{ marginBottom: 14 }}
+            >
+              👁️ Xem mã khôi phục dự phòng
+            </button>
+          )}
+
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={handleRegenerateRecoveryKey}
+          >
+            🔄 Tạo lại mã khôi phục mới
+          </button>
         </section>
 
         <section className="panel">
@@ -361,7 +549,7 @@ function SettingsPage() {
                 name="ai_model"
                 value={aiSettings.ai_model}
                 onChange={handleAIChange}
-                placeholder="gemini-2.0-flash"
+                placeholder="gemini-3.5-flash"
               />
             </label>
 

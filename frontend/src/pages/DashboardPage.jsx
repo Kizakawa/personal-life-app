@@ -341,16 +341,33 @@ function DashboardPage({ onNavigate }) {
   }, []);
 
   useEffect(() => {
-    function handleRefreshNeeded() {
-      loadDashboard();
+    let timer = null;
+    function handleRefreshNeeded(event) {
+      if (event && event.type === "app:data-invalidated") {
+        const { modules = [] } = event.detail || {};
+        if (modules.length > 0 && !modules.includes("dashboard")) {
+          return;
+        }
+      }
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        loadDashboard();
+      }, 150);
     }
 
+    window.addEventListener("app:data-invalidated", handleRefreshNeeded);
     window.addEventListener("personal-life:tasks-changed", handleRefreshNeeded);
     window.addEventListener("personal-life:expenses-changed", handleRefreshNeeded);
+    window.addEventListener("schedule-updated", handleRefreshNeeded);
+    window.addEventListener("personal-life:schedules-changed", handleRefreshNeeded);
 
     return () => {
+      window.removeEventListener("app:data-invalidated", handleRefreshNeeded);
       window.removeEventListener("personal-life:tasks-changed", handleRefreshNeeded);
       window.removeEventListener("personal-life:expenses-changed", handleRefreshNeeded);
+      window.removeEventListener("schedule-updated", handleRefreshNeeded);
+      window.removeEventListener("personal-life:schedules-changed", handleRefreshNeeded);
+      clearTimeout(timer);
     };
   }, []);
 
@@ -512,7 +529,7 @@ function DashboardPage({ onNavigate }) {
             <p className="page-kicker">Bắt đầu nhẹ nhàng</p>
             <h3>Chỉ cần làm 3 việc trước, phần còn lại để sau.</h3>
             <span>
-              Bản V14 ưu tiên giảm cảm giác rối: chưa cần nhập hết mọi thứ ngay lần đầu.
+              Bản V16 ưu tiên giảm cảm giác rối: chưa cần nhập hết mọi thứ ngay lần đầu.
             </span>
           </div>
 

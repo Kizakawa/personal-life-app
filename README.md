@@ -6,14 +6,14 @@
 ![Database](https://img.shields.io/badge/Database-SQL_Relational_(20_Tables)-003B57?logo=sqlite&logoColor=white)
 ![Backend](https://img.shields.io/badge/Backend-FastAPI_%2B_SQLAlchemy_2.0-009688?logo=fastapi&logoColor=white)
 ![Frontend](https://img.shields.io/badge/Frontend-React_19_%2B_Vite_8_%2B_Zustand-61DAFB?logo=react&logoColor=black)
-![Migrations](https://img.shields.io/badge/DB_Migration-Auto--Backup_Engine_(v1%E2%86%92v9)-10B981)
-![Packaging](https://img.shields.io/badge/Deployment-Windows_1--Click_Portable-0078D6?logo=windows&logoColor=white)
+![Migrations](https://img.shields.io/badge/DB_Migration-Auto--Backup_Engine_(v1%E2%86%92v10)-10B981)
+![Packaging](https://img.shields.io/badge/Deployment-Windows_1--Click_Portable_(V16)-0078D6?logo=windows&logoColor=white)
 
-*Hệ thống phần mềm quản trị cá nhân & học vụ toàn diện (Personal ERP Suite) tích hợp quản lý Thu-Chi, kiểm soát Hạn mức Ngân sách theo danh mục, quản lý Tiến độ Dự án – Công việc, Bảng điểm – Điểm danh, Báo cáo Thống kê đa chiều và đóng gói bộ cài đặt độc lập trên Windows có cơ chế tự động sao lưu CSDL khi nâng cấp phiên bản.*
+*Hệ thống phần mềm quản trị cá nhân & học vụ toàn diện (Personal ERP Suite — Phiên bản V16) tích hợp quản lý Thu-Chi, kiểm soát Hạn mức Ngân sách & Hoạch định Ngân sách Sinh tồn, quản lý Tiến độ Dự án – Công việc, Sổ Ghi bài – Bảng điểm – Điểm danh, Sự kiện Âm/Dương lịch, Báo cáo Thống kê đa chiều và đóng gói bộ cài đặt độc lập trên Windows có cơ chế tự động sao lưu CSDL (`v1 → v10`) khi nâng cấp phiên bản.*
 
 [🎯 Tổng quan Nghiệp vụ](#-tổng-quan-nghiệp-vụ--bài-toán-giải-quyết) •
 [💼 Điểm nhấn CSDL, BA & Triển khai](#-điểm-nhấn-năng-lực-thiết-kế-csdl-sql--phân-tích-nghiệp-vụ-ba--triển-khai) •
-[🗄️ Thiết kế CSDL (20 Bảng)](#-thiết-kế-cơ-sở-dữ-liệu-quan-hệ-20-bảng--migrations-v1--v9) •
+[🗄️ Thiết kế CSDL (20 Bảng)](#-thiết-kế-cơ-sở-dữ-liệu-quan-hệ-20-bảng--migrations-v1--v10) •
 [🏗️ Kiến trúc & 24 Phân hệ API](#️-kiến-trúc-hệ-thống--24-routers-nghiệp-vụ) •
 [🚀 Hướng dẫn Cài đặt & Đóng gói](#-hướng-dẫn-cài-đặt--đóng-gói-bộ-cài-windows-portable)
 
@@ -23,12 +23,12 @@
 
 ## 🎯 Tổng Quan Nghiệp Vụ & Bài Toán Giải Quyết
 
-**Personal Life App** được thiết kế như một hệ thống **Quản trị Nguồn lực Cá nhân & Học vụ (Personal ERP)** thu nhỏ, giải quyết bài toán phân mảnh dữ liệu khi người dùng phải quản lý đồng thời **Tài chính – Ngân sách**, **Dự án – Công việc**, **Lịch biểu – Thời hạn (Deadlines)** và **Học vụ – Điểm danh** trên nhiều công cụ rời rạc.
+**Personal Life App (V16)** được thiết kế như một hệ thống **Quản trị Nguồn lực Cá nhân & Học vụ (Personal ERP)** thu nhỏ, giải quyết bài toán phân mảnh dữ liệu khi người dùng phải quản lý đồng thời **Tài chính – Ngân sách**, **Dự án – Công việc**, **Lịch biểu Âm/Dương – Thời hạn (Deadlines)** và **Học vụ – Sổ ghi bài – Điểm danh** trên nhiều công cụ rời rạc.
 
 Thay vì chỉ dừng ở một ứng dụng ghi chú đơn giản, dự án tập trung vào **3 trụ cột kỹ thuật thực tế của phần mềm quản trị**:
-1. **Quản lý Nghiệp vụ Tài chính – Ngân sách & Dự án chặt chẽ:** Phân loại giao dịch thu/chi theo danh mục, thiết lập trần ngân sách định kỳ (`ExpenseBudget`), đối chiếu chi tiêu thực tế so với hạn mức, và quản lý vòng đời dự án – công việc – lịch trình.
+1. **Quản lý Nghiệp vụ Tài chính – Ngân sách & Dự án chặt chẽ:** Phân loại giao dịch thu/chi theo danh mục, thiết lập trần ngân sách định kỳ (`ExpenseBudget`), tính toán **Kế hoạch Ngân sách Sinh tồn** (cân đối số dư hiện có, chi phí cố định và số ngày còn lại), và quản lý vòng đời dự án – công việc – lịch trình Âm/Dương lịch.
 2. **Thiết kế CSDL Quan hệ Chuẩn hóa (20 Bảng) & Truy vấn Thống kê (`Analytics`):** Lưu trữ bền vững trên CSDL quan hệ thông qua **SQLAlchemy 2.0**, đảm bảo tính toàn vẹn tham chiếu và tổng hợp báo cáo trực quan trên Dashboard.
-3. **Đóng gói Triển khai & Bảo trì Phần mềm Chuẩn Thực Tế (`V1 → V14`):** Xây dựng bộ cài đặt **Windows Portable (`.zip`)** chạy ngay không cần cấu hình thủ công, tách biệt hoàn toàn dữ liệu khách hàng (`%APPDATA%\PersonalLifeApp`) khỏi thư mục chương trình, kết hợp **Engine Migration tự động sao lưu CSDL (`v1 → v9`)** trước mỗi lần nâng cấp phiên bản.
+3. **Đóng gói Triển khai & Bảo trì Phần mềm Chuẩn Thực Tế (`V1 → V16`):** Xây dựng bộ cài đặt **Windows Portable (`.zip`)** chạy ngay không cần cấu hình thủ công, tách biệt hoàn toàn dữ liệu khách hàng (`%APPDATA%\PersonalLifeApp`) khỏi thư mục chương trình, kết hợp **Engine Migration tự động sao lưu CSDL (`v1 → v10`)** và cấp phát **Khóa khôi phục (`Recovery Key`)** trước mỗi lần nâng cấp phiên bản.
 
 ---
 
@@ -36,13 +36,13 @@ Thay vì chỉ dừng ở một ứng dụng ghi chú đơn giản, dự án t�
 
 | Góc Nhìn Đánh Giá | Giải Pháp Kỹ Thuật & Nghiệp Vụ Đã Triển Khai Trong Dự Án |
 | :--- | :--- |
-| **🗄️ Thiết Kế CSDL & Lập Trình SQL**<br>*(Database Engineering)* | • **Lược đồ CSDL 20 Bảng Quan hệ (`backend/app/models/`):** Chuẩn hóa dữ liệu thành 5 nhóm phân hệ rõ ràng: *Tài chính & Ngân sách, Dự án & Công việc, Học vụ & Điểm danh, Kho tri thức & Tệp tin, Quản trị hệ thống & Nhật ký AI*.<br>• **Truy vấn Tổng hợp & Báo cáo (`analytics.py`, `dashboard.py`):** Truy vấn đối chiếu tổng chi tiêu theo từng danh mục (`GROUP BY category_id`) so với định mức ngân sách (`expense_budget`), thống kê tỷ lệ hoàn thành công việc đúng hạn và tổng hợp thời lượng tập trung.<br>• **Tự động Nâng cấp Lược đồ CSDL (`migrations.py` — Version 1 $\rightarrow$ 9):** Tự động kiểm tra bảng `app_metadata` (`key = 'database_version'`), dò cấu trúc cột hiện hành (`PRAGMA / sqlite_master`) và thực thi chuỗi nâng cấp lược đồ an toàn. |
-| **📋 Phân Tích Nghiệp Vụ**<br>*(Business Analysis - BA)* | • **Quản lý Yêu cầu & Cải tiến qua 14 Phiên bản (`docs/PROJECTS_V7..V14_CHANGELOG.md`):** Tài liệu hóa chi tiết quá trình khảo sát trải nghiệm người dùng, chuẩn hóa luồng nhập liệu chứng từ thu-chi, thu gọn biểu mẫu và tối ưu hóa quy trình onboarding.<br>• **Quy tắc Nghiệp vụ Tài chính & Ngân sách (`expenses.py`, `expense_budgets.py`):** Quản lý danh mục thu/chi chuẩn hóa, kiểm soát hạn mức ngân sách theo danh mục, hiển thị cảnh báo trực quan khi chi tiêu tiệm cận hoặc vượt định mức.<br>• **Quy tắc Nghiệp vụ Học vụ & Tiến độ (`student_hub.py`, `projects.py`):** Theo dõi chuyên cần (`AttendanceRecord`), quản lý thành phần điểm (`GradeItem`), liên kết môn học – hạn nộp (`Deadline`) – lịch học (`Schedule`). |
-| **🚀 Triển Khai & Bảo Hành Phần Mềm**<br>*(Implementation & Support)* | • **Cơ chế Tự động Sao lưu Trước Nâng cấp (`prepare_database_upgrade_backup`):** Trước khi nâng cấp CSDL từ phiên bản cũ lên `v9`, hệ thống tự động tạo bản sao lưu dự phòng (`before-upgrade-vX-to-v9`) để phòng ngừa rủi ro mất dữ liệu.<br>• **Tách biệt Dữ liệu Khách hàng & Bộ cài Chương trình (`storage.py`):** Toàn bộ CSDL, file đính kèm (`uploads`), bản sao lưu (`backups`) và nhật ký lỗi (`logs`) được lưu tại `%APPDATA%\PersonalLifeApp`. Khi cập nhật phần mềm phiên bản mới, người dùng chỉ cần chép đè thư mục chương trình mà **không mất bất kỳ dữ liệu cũ nào**.<br>• **Đóng gói 1-Click Windows Portable (`tools/build_portable_windows.bat`):** Tự động biên dịch giao diện, đóng gói Backend + Frontend thành tệp `PersonalLifeApp_HSSV_Portable.zip`, tự động tạo Shortcut ngoài Desktop và ghi log vận hành phục vụ bảo hành/hỗ trợ kỹ thuật. |
+| **🗄️ Thiết Kế CSDL & Lập Trình SQL**<br>*(Database Engineering)* | • **Lược đồ CSDL 20 Bảng Quan hệ (`backend/app/models/`):** Chuẩn hóa dữ liệu thành 5 nhóm phân hệ rõ ràng: *Tài chính & Ngân sách, Dự án & Công việc, Học vụ & Điểm danh, Kho tri thức & Sổ ghi bài (`class_notes`), Quản trị hệ thống & Nhật ký AI*.<br>• **Truy vấn Tổng hợp & Báo cáo (`analytics.py`, `dashboard.py`):** Truy vấn đối chiếu tổng chi tiêu theo từng danh mục (`GROUP BY category_id`) so với định mức ngân sách (`expense_budget`), thống kê tỷ lệ hoàn thành công việc đúng hạn, đếm số lượng ghi bài theo môn học và tổng hợp thời lượng tập trung.<br>• **Tự động Nâng cấp Lược đồ CSDL (`migrations.py` — Version 1 $\rightarrow$ 10):** Tự động kiểm tra bảng `app_metadata` (`key = 'database_version'`), dò cấu trúc cột hiện hành (`PRAGMA / sqlite_master`) và thực thi chuỗi nâng cấp lược đồ an toàn. |
+| **📋 Phân Tích Nghiệp Vụ**<br>*(Business Analysis - BA)* | • **Quản lý Yêu cầu & Cải tiến qua 16 Phiên bản (`docs/PROJECTS_V7..V16_CHANGELOG.md`):** Tài liệu hóa chi tiết quá trình khảo sát trải nghiệm người dùng, chuẩn hóa luồng nhập liệu chứng từ thu-chi, bổ sung phân hệ **Hỗ trợ ghi bài theo môn học (`V15–V16`)** và **Lịch sự kiện quy đổi Âm/Dương lịch tự động (`V16`)**.<br>• **Quy tắc Nghiệp vụ Tài chính & Ngân sách (`expenses.py`, `expense_budgets.py`):** Quản lý danh mục thu/chi chuẩn hóa, kiểm soát hạn mức ngân sách theo danh mục, tích hợp bài toán tối ưu chi tiêu theo số ngày còn lại.<br>• **Quy tắc Nghiệp vụ Học vụ & Tiến độ (`student_hub.py`, `projects.py`):** Theo dõi chuyên cần (`AttendanceRecord`), quản lý thành phần điểm (`GradeItem`), liên kết môn học – vở ghi bài – hạn nộp (`Deadline`) – lịch học (`Schedule`). |
+| **🚀 Triển Khai & Bảo Hành Phần Mềm**<br>*(Implementation & Support)* | • **Cơ chế Tự động Sao lưu Trước Nâng cấp (`prepare_database_upgrade_backup`):** Trước khi nâng cấp CSDL từ phiên bản cũ lên `v10`, hệ thống tự động tạo bản sao lưu dự phòng (`before-upgrade-vX-to-v10`) để phòng ngừa rủi ro mất dữ liệu.<br>• **Tách biệt Dữ liệu Khách hàng & Bộ cài Chương trình (`storage.py`):** Toàn bộ CSDL, khóa khôi phục (`Recovery Key`), file đính kèm (`uploads`), bản sao lưu (`backups`) và nhật ký lỗi (`logs`) được lưu tại `%APPDATA%\PersonalLifeApp`. Khi cập nhật phần mềm phiên bản mới, người dùng chỉ cần chép đè thư mục chương trình mà **không mất bất kỳ dữ liệu cũ nào**.<br>• **Đóng gói 1-Click Windows Portable (`tools/build_portable_windows.bat`):** Tự động biên dịch giao diện, đóng gói Backend + Frontend thành tệp `PersonalLifeApp_HSSV_Portable.zip`, tự động tạo Shortcut ngoài Desktop và ghi log vận hành phục vụ bảo hành/hỗ trợ kỹ thuật. |
 
 ---
 
-## 🗄️ Thiết Kế Cơ Sở Dữ Liệu Quan Hệ (20 Bảng) & Migrations (`v1 → v9`)
+## 🗄️ Thiết Kế Cơ Sở Dữ Liệu Quan Hệ (20 Bảng) & Migrations (`v1 → v10`)
 
 Hệ thống CSDL trong `backend/app/models/` gồm **20 bảng quan hệ** được phân chia theo đúng các phân hệ nghiệp vụ:
 
@@ -77,7 +77,7 @@ erDiagram
 | **2. Dự án, Công việc & Lịch biểu**<br>*(Project & Task Management)* | `project`, `task`, `deadline`, `schedule`, `event`, `person` | Quản lý danh mục dự án, phân rã đầu việc (`task`), theo dõi trạng thái hoàn thành, quản lý thời hạn (`deadline`), lịch biểu tuần và danh bạ liên kết (`person`). |
 | **3. Học vụ, Điểm danh & Đánh giá**<br>*(Academic & Attendance Hub)* | `subject`, `attendance_record`, `grade_item`, `focus_session`, `gamification_event` | Quản lý môn học, lịch sử điểm danh chuyên cần, bảng điểm thành phần/trọng số, thống kê phiên tập trung Pomodoro và điểm thưởng tiến độ. |
 | **4. Kho Tri thức & Tệp đính kèm**<br>*(Knowledge & File Storage)* | `workspace_item`, `file_item` | Quản lý tài liệu ghi chú chuẩn Markdown và liên kết siêu dữ liệu (metadata) của các tệp tin đính kèm lưu trên ổ cứng. |
-| **5. Quản trị Hệ thống & Trợ lý AI**<br>*(System Admin & AI Context)* | `user`, `app_setting`, `app_metadata`, `ai_chat_history` | Quản lý tài khoản người dùng, tham số cấu hình hệ thống, phiên bản lược đồ CSDL (`database_version = 9`) và lịch sử hội thoại trợ lý thông minh. |
+| **5. Quản trị Hệ thống & Trợ lý AI**<br>*(System Admin & AI Context)* | `user`, `app_setting`, `app_metadata`, `ai_chat_history` | Quản lý tài khoản người dùng, tham số cấu hình hệ thống, phiên bản lược đồ CSDL (`database_version = 10`) và lịch sử hội thoại trợ lý thông minh. |
 
 ---
 
@@ -151,7 +151,7 @@ Dự án tích hợp sẵn kịch bản đóng gói tự động phục vụ tri
 
 <div align="center">
 
-**Tác giả:** **Kizakawa (Đức Vương)** • 📧 [vivyngocnghech@gmail.com](mailto:vivyngocnghech@gmail.com)  
+**Tác giả:** **Phan Quốc Bảo (Kizakawa) — Sinh viên ngành Khoa học máy tính** • 📧 [vivyngocnghech@gmail.com](mailto:vivyngocnghech@gmail.com)  
 [⬅️ **Quay lại Trang chủ Portfolio GitHub (@Kizakawa)**](https://github.com/Kizakawa)
 
 </div>

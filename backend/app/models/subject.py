@@ -18,7 +18,7 @@ class Subject(Base):
     attendance_limit = Column(Integer, nullable=True, default=3)
     target_score = Column(Float, nullable=True)
 
-    progress_status = Column(String, nullable=False, default="not_started")
+    progress_status = Column(String, nullable=False, default="studying")
     note = Column(Text, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)

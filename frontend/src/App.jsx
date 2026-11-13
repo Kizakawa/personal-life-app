@@ -1,4 +1,4 @@
-import { Suspense, lazy, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { Toaster } from "react-hot-toast";
 import "./App.css";
 
@@ -8,6 +8,7 @@ import AppLock from "./components/AppLock";
 
 const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage"));
 const BackupPage = lazy(() => import("./pages/BackupPage"));
+const ClassNotesPage = lazy(() => import("./pages/ClassNotesPage"));
 const CommandsPage = lazy(() => import("./pages/CommandsPage"));
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 const DeadlinesPage = lazy(() => import("./pages/DeadlinesPage"));
@@ -31,6 +32,7 @@ const TasksPage = lazy(() => import("./pages/TasksPage"));
 const pageComponents = {
   analytics: AnalyticsPage,
   backup: BackupPage,
+  "class-notes": ClassNotesPage,
   commands: CommandsPage,
   dashboard: DashboardPage,
   deadlines: DeadlinesPage,
@@ -55,8 +57,8 @@ const pageComponents = {
 function UnknownPage() {
   return (
     <div className="panel">
-      <h2>Đang phát triển</h2>
-      <p className="empty">Module này sẽ được xây sau.</p>
+      <h2>Không tìm thấy module</h2>
+      <p className="empty">Mục này chưa được đăng ký trong ứng dụng hiện tại.</p>
     </div>
   );
 }
@@ -64,6 +66,17 @@ function UnknownPage() {
 function App() {
   const [activePage, setActivePage] = useState("dashboard");
   const PageComponent = pageComponents[activePage] || UnknownPage;
+
+  useEffect(() => {
+    function handleNavigate(event) {
+      const page = event.detail;
+      if (page && pageComponents[page]) {
+        setActivePage(page);
+      }
+    }
+    window.addEventListener("personal-life:navigate", handleNavigate);
+    return () => window.removeEventListener("personal-life:navigate", handleNavigate);
+  }, []);
 
   return (
     <AppLock>
@@ -73,7 +86,7 @@ function App() {
           <PageComponent onNavigate={setActivePage} />
         </Suspense>
       </AppLayout>
-      <AIFloatingDrawer activePage={activePage} />
+      <AIFloatingDrawer activePage={activePage} onNavigate={setActivePage} />
     </AppLock>
   );
 }

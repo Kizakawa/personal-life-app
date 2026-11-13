@@ -44,6 +44,37 @@
   flex-wrap: wrap;
 }
 
+.library-page.entry-mode::before {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  background: rgba(15, 23, 42, 0.34);
+  backdrop-filter: blur(3px);
+  content: "";
+}
+
+.library-page.entry-mode .library-side-panel {
+  position: fixed;
+  inset: 42px 42px 32px auto;
+  z-index: 60;
+  width: min(820px, calc(100vw - 84px));
+  max-width: 820px;
+  overflow: auto;
+}
+
+.library-page.entry-mode .library-side-panel > .library-panel:first-child {
+  border-radius: 18px;
+  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.28);
+}
+
+@media (max-width: 760px) {
+  .library-page.entry-mode .library-side-panel {
+    inset: 16px;
+    width: auto;
+    max-width: none;
+  }
+}
+
 .library-summary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));

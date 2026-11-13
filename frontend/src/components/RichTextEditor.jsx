@@ -28,8 +28,10 @@ function RichTextEditor({
   autosaveState = "idle",
 }) {
   const editorRef = useRef(null);
+  const selectionRef = useRef(null);
   const [lastValue, setLastValue] = useState(sanitizeHtml(value || ""));
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [activeFormats, setActiveFormats] = useState({});
 
   useEffect(() => {
     if (!editorRef.current) return;
@@ -50,10 +52,65 @@ function RichTextEditor({
     onChange?.(html);
   }
 
+  function saveSelection() {
+    const selection = window.getSelection?.();
+
+    if (!selection || selection.rangeCount === 0 || !editorRef.current) {
+      return;
+    }
+
+    const range = selection.getRangeAt(0);
+
+    if (editorRef.current.contains(range.commonAncestorContainer)) {
+      selectionRef.current = range.cloneRange();
+    }
+  }
+
+  function restoreSelection() {
+    const editor = editorRef.current;
+    const selection = window.getSelection?.();
+
+    if (!editor || !selection) {
+      return;
+    }
+
+    editor.focus();
+
+    if (selectionRef.current && editor.contains(selectionRef.current.commonAncestorContainer)) {
+      selection.removeAllRanges();
+      selection.addRange(selectionRef.current);
+      return;
+    }
+
+    const range = document.createRange();
+    range.selectNodeContents(editor);
+    range.collapse(false);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    selectionRef.current = range.cloneRange();
+  }
+
+  function updateActiveFormats() {
+    setActiveFormats({
+      bold: document.queryCommandState("bold"),
+      italic: document.queryCommandState("italic"),
+      underline: document.queryCommandState("underline"),
+    });
+  }
+
+  function keepEditorSelection(event) {
+    event.preventDefault();
+  }
+
   function runCommand(command, commandValue = null) {
-    editorRef.current?.focus();
+    restoreSelection();
+    if (command === "foreColor" || command === "backColor" || command === "hiliteColor") {
+      document.execCommand("styleWithCSS", false, true);
+    }
     document.execCommand(command, false, commandValue);
     emitChange();
+    saveSelection();
+    updateActiveFormats();
   }
 
   function insertImage(src, fileId = null) {
@@ -124,17 +181,17 @@ function RichTextEditor({
   return (
     <div className="rich-editor-shell">
       <div className="rich-editor-toolbar">
-        <button type="button" onClick={() => runCommand("bold")}>B</button>
-        <button type="button" onClick={() => runCommand("italic")}>I</button>
-        <button type="button" onClick={() => runCommand("underline")}>U</button>
-        <button type="button" onClick={() => runCommand("insertUnorderedList")}>• List</button>
-        <button type="button" onClick={() => runCommand("formatBlock", "H3")}>Tiêu đề</button>
-        <button type="button" onClick={() => runCommand("hiliteColor", "#fef3c7")}>Highlight</button>
-        <button type="button" onClick={clearFormatting}>Xóa định dạng</button>
+        <button className={activeFormats.bold ? "active" : ""} type="button" onMouseDown={keepEditorSelection} onClick={() => runCommand("bold")}>B</button>
+        <button className={activeFormats.italic ? "active" : ""} type="button" onMouseDown={keepEditorSelection} onClick={() => runCommand("italic")}>I</button>
+        <button className={activeFormats.underline ? "active" : ""} type="button" onMouseDown={keepEditorSelection} onClick={() => runCommand("underline")}>U</button>
+        <button type="button" onMouseDown={keepEditorSelection} onClick={() => runCommand("insertUnorderedList")}>• List</button>
+        <button type="button" onMouseDown={keepEditorSelection} onClick={() => runCommand("formatBlock", "H3")}>Tiêu đề</button>
+        <button type="button" onMouseDown={keepEditorSelection} onClick={() => runCommand("hiliteColor", "#fef3c7")}>Highlight</button>
+        <button type="button" onMouseDown={keepEditorSelection} onClick={clearFormatting}>Xóa định dạng</button>
 
         <label className="rich-editor-color-picker">
           Chữ
-          <select onChange={(event) => runCommand("foreColor", event.target.value)} defaultValue="">
+          <select onMouseDown={saveSelection} onChange={(event) => runCommand("foreColor", event.target.value)} defaultValue="">
             <option value="" disabled>Màu</option>
             {textColors.map((color) => (
               <option value={color} key={color}>{color}</option>
@@ -144,7 +201,7 @@ function RichTextEditor({
 
         <label className="rich-editor-color-picker">
           Nền
-          <select onChange={(event) => runCommand("backColor", event.target.value)} defaultValue="">
+          <select onMouseDown={saveSelection} onChange={(event) => runCommand("backColor", event.target.value)} defaultValue="">
             <option value="" disabled>Màu</option>
             {backgroundColors.map((color) => (
               <option value={color} key={color}>{color}</option>
@@ -168,6 +225,14 @@ function RichTextEditor({
         data-placeholder={placeholder}
         style={{ minHeight }}
         onInput={emitChange}
+        onKeyUp={() => {
+          saveSelection();
+          updateActiveFormats();
+        }}
+        onMouseUp={() => {
+          saveSelection();
+          updateActiveFormats();
+        }}
         onBlur={emitChange}
         onPaste={handlePaste}
         onDrop={handleDrop}

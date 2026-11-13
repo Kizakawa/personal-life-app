@@ -21,6 +21,24 @@ def get_schedules(db: Session = Depends(get_db)):
 def create_schedule(schedule: ScheduleCreate, db: Session = Depends(get_db)):
     new_schedule = Schedule(**schedule.model_dump())
     db.add(new_schedule)
+
+    # Tự động đồng bộ sang bảng Subject nếu là môn học (category == "study")
+    if new_schedule.category == "study" and new_schedule.title:
+        from app.models.subject import Subject
+        subj_name = new_schedule.title.strip()
+        existing_subject = db.query(Subject).filter(Subject.name.ilike(subj_name)).first()
+        if not existing_subject:
+            new_subject = Subject(
+                name=subj_name,
+                room=new_schedule.location,
+                note=new_schedule.note,
+                progress_status="studying",
+            )
+            db.add(new_subject)
+        else:
+            if existing_subject.progress_status != "studying":
+                existing_subject.progress_status = "studying"
+
     db.commit()
     db.refresh(new_schedule)
     return new_schedule

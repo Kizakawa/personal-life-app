@@ -40,6 +40,12 @@
   outline: none;
 }
 
+.rich-editor-toolbar button.active {
+  border-color: #2563eb;
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
 .rich-editor-upload-button input {
   display: none;
 }

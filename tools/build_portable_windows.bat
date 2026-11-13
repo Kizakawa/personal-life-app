@@ -33,6 +33,11 @@ if errorlevel 1 goto :fail
 
 call :log [2/7] Prepare backend environment
 cd /d "%BACKEND_DIR%" || goto :fail
+call :log Cleaning old backend build cache
+if exist "build" rmdir /s /q "build" >> "%LOG_FILE%" 2>&1
+if exist "dist" rmdir /s /q "dist" >> "%LOG_FILE%" 2>&1
+if exist "PersonalLifeBackend.spec" del /q "PersonalLifeBackend.spec" >> "%LOG_FILE%" 2>&1
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Get-ChildItem -LiteralPath '%BACKEND_DIR%' -Recurse -Directory -Filter '__pycache__' | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue" >> "%LOG_FILE%" 2>&1
 if not exist ".venv\Scripts\python.exe" (
   py -3 -m venv .venv >> "%LOG_FILE%" 2>&1
   if errorlevel 1 python -m venv .venv >> "%LOG_FILE%" 2>&1
@@ -47,7 +52,7 @@ python -m pip install pyinstaller >> "%LOG_FILE%" 2>&1
 if errorlevel 1 goto :fail
 
 call :log [3/7] Build backend executable
-python -m PyInstaller --noconfirm --onedir --name PersonalLifeBackend --paths "%BACKEND_DIR%" desktop_server.py >> "%LOG_FILE%" 2>&1
+python -m PyInstaller --noconfirm --onedir --name PersonalLifeBackend --paths "%BACKEND_DIR%" --collect-submodules app --collect-submodules fastapi --collect-submodules starlette --collect-submodules pydantic --collect-submodules sqlalchemy --collect-submodules google desktop_server.py >> "%LOG_FILE%" 2>&1
 if errorlevel 1 goto :fail
 
 call :log [4/7] Create portable folder

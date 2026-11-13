@@ -3,6 +3,7 @@ import { getAnalyticsSummary } from "../api/analyticsApi";
 
 const workspaceLabels = {
   study: "Học tập",
+  class_notes: "Hỗ trợ ghi bài",
   knowledge: "Kho tri thức",
   exam: "Ôn thi",
   documents: "Tài liệu",
@@ -35,6 +36,14 @@ function AnalyticsPage() {
     return `${Number(value || 0).toLocaleString("vi-VN")}đ`;
   }
 
+  function percent(done, total) {
+    if (!total) {
+      return 0;
+    }
+
+    return Math.min(Math.round((done / total) * 100), 100);
+  }
+
   if (loading) {
     return (
       <header className="page-header">
@@ -63,21 +72,31 @@ function AnalyticsPage() {
         </p>
       </header>
 
-      <div className="summary-grid">
-        <article className="summary-card">
-          <span>Sự kiện</span>
-          <strong>{data.events}</strong>
+      <section className="analytics-hero-grid">
+        <article className="analytics-hero-card primary">
+          <span>Tổng dữ liệu chính</span>
+          <strong>{data.events + data.schedules + data.people + data.tasks.total + data.deadlines.total}</strong>
+          <p>Sự kiện, lịch, quan hệ, việc cần làm và deadline đã ghi nhận.</p>
         </article>
 
-        <article className="summary-card">
-          <span>Thời khóa biểu</span>
-          <strong>{data.schedules}</strong>
+        <article className="analytics-hero-card">
+          <span>Tiến độ việc</span>
+          <strong>{percent(data.tasks.done, data.tasks.total)}%</strong>
+          <div className="analytics-progress"><i style={{ width: `${percent(data.tasks.done, data.tasks.total)}%` }} /></div>
+          <p>{data.tasks.done}/{data.tasks.total} việc đã hoàn thành.</p>
         </article>
 
-        <article className="summary-card">
-          <span>Người quan trọng</span>
-          <strong>{data.people}</strong>
+        <article className="analytics-hero-card danger">
+          <span>Deadline quá hạn</span>
+          <strong>{data.deadlines.overdue}</strong>
+          <p>{data.deadlines.pending + data.deadlines.doing} deadline còn cần xử lý.</p>
         </article>
+      </section>
+
+      <div className="summary-grid analytics-mini-grid">
+        <article className="summary-card"><span>Sự kiện</span><strong>{data.events}</strong></article>
+        <article className="summary-card"><span>Thời khóa biểu</span><strong>{data.schedules}</strong></article>
+        <article className="summary-card"><span>Người quan trọng</span><strong>{data.people}</strong></article>
       </div>
 
       <div className="layout">
@@ -86,7 +105,7 @@ function AnalyticsPage() {
             <h3>Môn học</h3>
           </div>
 
-          <div className="survival-overview">
+          <div className="analytics-stat-grid">
             <article>
               <span>Tổng môn</span>
               <strong>{data.subjects.total}</strong>
@@ -119,7 +138,7 @@ function AnalyticsPage() {
             <h3>Dự án cá nhân</h3>
           </div>
 
-          <div className="survival-overview">
+          <div className="analytics-stat-grid">
             <article>
               <span>Tổng dự án</span>
               <strong>{data.projects.total}</strong>
@@ -154,7 +173,7 @@ function AnalyticsPage() {
             <h3>Kế hoạch ngày</h3>
           </div>
 
-          <div className="survival-overview">
+          <div className="analytics-stat-grid">
             <article>
               <span>Tổng việc</span>
               <strong>{data.tasks.total}</strong>
@@ -187,7 +206,7 @@ function AnalyticsPage() {
             <h3>Deadline</h3>
           </div>
 
-          <div className="survival-overview">
+          <div className="analytics-stat-grid">
             <article>
               <span>Tổng deadline</span>
               <strong>{data.deadlines.total}</strong>
@@ -222,7 +241,7 @@ function AnalyticsPage() {
             <h3>Tài chính trong năm</h3>
           </div>
 
-          <div className="survival-overview">
+          <div className="analytics-finance-grid">
             <article>
               <span>Tổng thu</span>
               <strong>{formatMoney(data.expenses.totalIncome)}</strong>

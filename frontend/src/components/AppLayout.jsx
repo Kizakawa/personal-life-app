@@ -20,6 +20,7 @@ const navGroups = [
       { id: "schedules", label: "Thời khóa biểu", icon: "TB" },
       { id: "tasks", label: "Kế hoạch ngày", icon: "CV" },
       { id: "study", label: "Học tập", icon: "HT" },
+      { id: "class-notes", label: "Hỗ trợ ghi bài", icon: "GB" },
       { id: "exam", label: "Ôn thi", icon: "OT" },
     ],
   },

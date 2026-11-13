@@ -38,6 +38,37 @@ DATABASE_PATH = DATA_DIR / DATABASE_FILE_NAME
 UPLOAD_DIR = DATA_DIR / "uploads"
 BACKUP_DIR = DATA_DIR / "backups"
 CONFIG_PATH = DATA_DIR / "app_config.json"
+RECOVERY_KEY_PATH = DATA_DIR / "recovery_key.txt"
+
+
+def save_recovery_key_file(username: str, recovery_key: str):
+    ensure_storage_dirs()
+    content = (
+        "===========================================================\n"
+        "PERSONAL LIFE APP - MÃ KHÔI PHỤC TÀI KHOẢN DỰ PHÒNG\n"
+        "===========================================================\n"
+        f"Tài khoản: {username}\n"
+        f"Mã khôi phục: {recovery_key}\n"
+        f"Ngày tạo: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        "LƯU Ý QUAN TRỌNG:\n"
+        "- Dùng mã này để đặt lại mật khẩu khi bạn quên mật khẩu đăng nhập.\n"
+        "- Hãy lưu giữ file này hoặc sao chép mã này vào nơi an toàn.\n"
+        "- Trên màn hình đăng nhập, chọn 'Quên mật khẩu' -> Chọn tab 'Mã khôi phục'.\n"
+        "===========================================================\n"
+    )
+    try:
+        RECOVERY_KEY_PATH.write_text(content, encoding="utf-8")
+    except Exception:
+        pass
+
+
+def read_recovery_key_file() -> str | None:
+    if not RECOVERY_KEY_PATH.exists():
+        return None
+    try:
+        return RECOVERY_KEY_PATH.read_text(encoding="utf-8")
+    except Exception:
+        return None
 
 
 def ensure_storage_dirs():

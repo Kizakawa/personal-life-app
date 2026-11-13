@@ -200,6 +200,32 @@ function StudentHubPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Lắng nghe Domain Event Bus với Debounce 150ms
+  useEffect(() => {
+    let timer = null;
+    function handleDataInvalidated(event) {
+      const { modules = [] } = event.detail || {};
+      if (
+        modules.length > 0 &&
+        !modules.includes("student-hub") &&
+        !modules.includes("subjects") &&
+        !modules.includes("schedules")
+      ) {
+        return;
+      }
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        loadSummary();
+      }, 150);
+    }
+
+    window.addEventListener("app:data-invalidated", handleDataInvalidated);
+    return () => {
+      window.removeEventListener("app:data-invalidated", handleDataInvalidated);
+      clearTimeout(timer);
+    };
+  }, []);
+
   const selectedSubject = useMemo(() => {
     return summary?.subjects?.find((item) => item.id === selectedId) || detail?.subject || null;
   }, [detail, selectedId, summary]);

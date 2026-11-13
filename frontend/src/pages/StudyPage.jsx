@@ -381,13 +381,15 @@ function StudyPage() {
     try {
       const payload = buildPayload();
 
+      let savedItem = null;
+
       if (editingId) {
-        await updateWorkspaceItem(editingId, payload);
+        savedItem = await updateWorkspaceItem(editingId, payload);
       } else {
-        await createWorkspaceItem(payload);
+        savedItem = await createWorkspaceItem(payload);
       }
 
-      const preferredSelectedId = editingId;
+      const preferredSelectedId = savedItem?.id || editingId;
       resetForm();
       await loadData(preferredSelectedId);
     } catch (err) {
@@ -518,7 +520,7 @@ function StudyPage() {
   }
 
   return (
-    <div className="learning-page">
+    <div className={`learning-page ${showForm ? "entry-mode" : ""}`}>
       <header className="learning-header">
         <div>
           <span className="learning-eyebrow">STUDY HUB</span>
@@ -533,13 +535,6 @@ function StudyPage() {
         <div className="learning-header-actions">
           <button className="learning-button" type="button" onClick={() => startCreate()}>
             + Thêm mục học tập
-          </button>
-          <button
-            className="learning-button-secondary"
-            type="button"
-            onClick={() => startCreate({ category: "Ghi chú nhanh", status: "active" })}
-          >
-            Ghi chú nhanh
           </button>
         </div>
       </header>

@@ -7,9 +7,15 @@ from sqlalchemy.orm import Session
 
 from app.models.app_metadata import AppMetadata
 from app.ai_context import ensure_ai_default_settings
-from app.storage import DATABASE_PATH, create_upgrade_backup, ensure_storage_dirs
+from app.security import generate_recovery_key, hash_recovery_key
+from app.storage import (
+    DATABASE_PATH,
+    create_upgrade_backup,
+    ensure_storage_dirs,
+    save_recovery_key_file,
+)
 
-CURRENT_DATABASE_VERSION = 9
+CURRENT_DATABASE_VERSION = 10
 
 
 def read_existing_database_version() -> int | None:
@@ -85,9 +91,45 @@ def ensure_subject_student_columns(db: Session):
 
 def ensure_user_security_columns(db: Session):
     existing_columns = get_existing_columns(db, "users")
+    if not existing_columns:
+        return
 
     if "calendar_token" not in existing_columns:
         db.execute(text("ALTER TABLE users ADD COLUMN calendar_token VARCHAR"))
+
+    if "security_question" not in existing_columns:
+        db.execute(text("ALTER TABLE users ADD COLUMN security_question VARCHAR"))
+
+    if "security_answer_hash" not in existing_columns:
+        db.execute(text("ALTER TABLE users ADD COLUMN security_answer_hash VARCHAR"))
+
+    if "recovery_key_hash" not in existing_columns:
+        db.execute(text("ALTER TABLE users ADD COLUMN recovery_key_hash VARCHAR"))
+
+    if "recovery_key" not in existing_columns:
+        db.execute(text("ALTER TABLE users ADD COLUMN recovery_key VARCHAR"))
+
+    # Đảm bảo tất cả user hiện có đều có recovery_key
+    try:
+        rows = db.execute(
+            text("SELECT id, username, recovery_key FROM users")
+        ).fetchall()
+
+        for row in rows:
+            user_id = row[0]
+            username = row[1]
+            existing_key = row[2]
+
+            if not existing_key:
+                rec_key = generate_recovery_key()
+                rec_hash = hash_recovery_key(rec_key)
+                db.execute(
+                    text("UPDATE users SET recovery_key = :key, recovery_key_hash = :hash WHERE id = :id"),
+                    {"key": rec_key, "hash": rec_hash, "id": user_id},
+                )
+                save_recovery_key_file(username, rec_key)
+    except Exception:
+        pass
 
 
 
@@ -217,6 +259,26 @@ def upsert_metadata(db: Session, key: str, value: str):
     return item
 
 
+def sync_subject_schedule_statuses(db: Session):
+    """Đảm bảo mọi môn học đã có lịch trong bảng schedules luôn có progress_status = 'studying'."""
+    try:
+        db.execute(
+            text(
+                """
+                UPDATE subjects
+                SET progress_status = 'studying'
+                WHERE LOWER(TRIM(name)) IN (
+                    SELECT LOWER(TRIM(title)) FROM schedules 
+                    WHERE category = 'study' OR category IS NULL OR category = ''
+                )
+                AND (progress_status IS NULL OR progress_status = 'not_started')
+                """
+            )
+        )
+    except Exception as e:
+        print(f"[migrations] sync_subject_schedule_statuses notice: {e}")
+
+
 def run_startup_migrations(db: Session):
     ensure_subject_student_columns(db)
     ensure_user_security_columns(db)
@@ -225,6 +287,7 @@ def run_startup_migrations(db: Session):
     ensure_workspace_fts(db)
     ensure_performance_indexes(db)
     ensure_ai_default_settings(db)
+    sync_subject_schedule_statuses(db)
 
     upsert_metadata(db, "database_version", str(CURRENT_DATABASE_VERSION))
     upsert_metadata(db, "last_startup_at", datetime.utcnow().isoformat(timespec="seconds"))

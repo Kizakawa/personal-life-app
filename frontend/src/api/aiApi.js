@@ -143,3 +143,77 @@ export async function sendAIMessageStream(message, handlers = {}, media = {}) {
 
   return finalMessage;
 }
+
+export async function quickAddSchedule(prompt) {
+  const response = await apiFetch(`${API_URL}/api/ai/quick-schedule`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ prompt }),
+  });
+
+  return parseResponse(response, "Không thể thêm lịch học tự động.");
+}
+
+export async function proposeScheduleAction(prompt, images = [], imageBase64 = null, imageMimeType = null) {
+  const payload = { prompt };
+  if (Array.isArray(images) && images.length > 0) {
+    payload.images = images.map((img) => ({
+      base64: img.base64,
+      mime_type: img.mimeType || "image/jpeg",
+    }));
+  } else if (imageBase64) {
+    payload.image_base64 = imageBase64;
+    payload.image_mime_type = imageMimeType || "image/jpeg";
+  }
+
+  const response = await apiFetch(`${API_URL}/api/ai/schedule/propose`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  return parseResponse(response, "Không thể phân tích yêu cầu thời khóa biểu.");
+}
+
+export async function executeScheduleAction({
+  action,
+  confirmation_payload,
+  override_conflict = false,
+}) {
+  const response = await apiFetch(`${API_URL}/api/ai/schedule/execute`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      action,
+      confirmation_payload,
+      override_conflict,
+    }),
+  });
+
+  return parseResponse(response, "Không thể thực thi thao tác thời khóa biểu.");
+}
+
+export async function executeBatchScheduleAction({
+  items,
+  override_conflicts = false,
+}) {
+  const response = await apiFetch(`${API_URL}/api/ai/schedule/execute-batch`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      items,
+      override_conflicts,
+    }),
+  });
+
+  return parseResponse(response, "Không thể lưu danh sách thời khóa biểu hàng loạt.");
+}
+

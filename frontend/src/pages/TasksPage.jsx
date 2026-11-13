@@ -635,7 +635,7 @@ function TasksPage() {
   }
 
   return (
-    <div className="tasks-page">
+    <div className={`tasks-page ${showForm ? "entry-mode" : ""}`}>
       <header className="page-header tasks-header">
         <div>
           <span className="tasks-section-label">DAILY PLAN</span>
@@ -652,10 +652,6 @@ function TasksPage() {
       </header>
 
       <section className="tasks-day-switcher">
-        <button type="button" onClick={() => setSelectedDate(addDays(selectedDate, -1))}>
-          ← Ngày trước
-        </button>
-
         <label>
           <span>Ngày đang xem</span>
           <input
@@ -668,14 +664,6 @@ function TasksPage() {
             }}
           />
         </label>
-
-        <button type="button" onClick={() => setSelectedDate(today)}>
-          Hôm nay
-        </button>
-
-        <button type="button" onClick={() => setSelectedDate(addDays(selectedDate, 1))}>
-          Ngày sau →
-        </button>
       </section>
 
       <section className="tasks-week-strip" aria-label="Tuần đang xem">

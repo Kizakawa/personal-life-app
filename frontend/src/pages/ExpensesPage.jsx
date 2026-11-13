@@ -423,8 +423,58 @@ function ExpensesPage() {
       await deleteExpenseCategory(categoryId);
       loadExpenseData();
     } catch {
-      setError("Không xóa được danh mục mặc định hoặc danh mục đã có giao dịch.");
+      setError("Không xóa được danh mục đã có giao dịch. Hãy sửa tên/màu nếu cần giữ lịch sử.");
     }
+  }
+
+  function openReceiptAI() {
+    window.dispatchEvent(
+      new CustomEvent("personal-life:open-ai", {
+        detail: {
+          message: "Hãy đọc ảnh hóa đơn này, tự phân loại khoản chi và đề xuất tạo giao dịch.",
+          openImagePicker: true,
+        },
+      }),
+    );
+  }
+
+  function openSurvivalAI() {
+    if (!survivalPlan) {
+      return;
+    }
+
+    const categoryLines = survivalPlan.categories
+      .map(
+        (category) =>
+          `- ${category.name}: ${formatCurrency(category.daily_amount)}/ngày, tổng ${formatCurrency(category.total_amount)}. Ghi chú: ${category.note}`,
+      )
+      .join("\n");
+    const suggestionLines = survivalPlan.suggestions.map((suggestion) => `- ${suggestion}`).join("\n");
+
+    window.dispatchEvent(
+      new CustomEvent("personal-life:open-ai", {
+        detail: {
+          message: [
+            "Bạn là cố vấn sinh tồn tài chính thực tế cho sinh viên Việt Nam.",
+            "Hãy tối ưu kế hoạch dưới đây thành hướng dẫn có thể làm ngay, ưu tiên ăn uống, đi lại, học tập và khoản dự phòng.",
+            `Số tiền ban đầu: ${formatCurrency(survivalForm.total_money)}`,
+            `Số ngày cần sống: ${survivalForm.days}`,
+            `Chi phí cố định đã trừ: ${formatCurrency(survivalForm.fixed_costs)}`,
+            `Khu vực chi phí: ${survivalForm.city_level}`,
+            `Có thể tự nấu ăn: ${survivalForm.cooking_available ? "có" : "không"}`,
+            `Tiền còn dùng được: ${formatCurrency(survivalPlan.available_money)}`,
+            `Ngân sách/ngày: ${formatCurrency(survivalPlan.daily_budget)}`,
+            `Mức rủi ro: ${survivalPlan.risk_level}`,
+            `Cảnh báo: ${survivalPlan.risk_message}`,
+            "Phân bổ hiện tại:",
+            categoryLines,
+            "Gợi ý hiện tại:",
+            suggestionLines,
+            "Hãy trả lời bằng kế hoạch theo ngày, danh sách việc nên làm ngay hôm nay, và các khoản tuyệt đối không nên chi.",
+          ].join("\n"),
+        },
+      }),
+    );
   }
 
   function handleEditBudget(category) {
@@ -734,6 +784,17 @@ function ExpensesPage() {
 
       {activeTab === "transactions" && (
         <section className={`transaction-layout transaction-workspace ${showTransactionForm ? "with-form" : "list-only"}`}>
+          <section className="expense-panel receipt-ai-panel">
+            <div>
+              <p>Hóa đơn AI</p>
+              <h3>Chụp hoặc tải ảnh hóa đơn</h3>
+              <span>AI đọc ảnh, gợi ý số tiền, danh mục, ngày chi và cho bạn xác nhận tạo giao dịch.</span>
+            </div>
+            <button type="button" onClick={openReceiptAI}>
+              Chụp/tải hóa đơn bằng AI
+            </button>
+          </section>
+
           {showTransactionForm && (
           <form className="expense-form-panel" onSubmit={handleExpenseSubmit}>
             <div className="expense-panel-title">
@@ -1056,7 +1117,10 @@ function ExpensesPage() {
                       Chỉnh
                     </button>
                     <button type="button" onClick={() => handleEditCategory(category)}>
-                      Danh mục
+                      Sửa
+                    </button>
+                    <button type="button" onClick={() => handleDeleteCategory(category.id)}>
+                      Xóa
                     </button>
                   </article>
                 );
@@ -1222,39 +1286,6 @@ function ExpensesPage() {
             </form>
             )}
 
-            <section className="expense-panel compact-category-panel">
-              <div className="expense-panel-title">
-                <div>
-                  <p>Phân loại</p>
-                  <h3>Danh mục hiện có</h3>
-                </div>
-              </div>
-
-              <div className="category-management-list compact">
-                {categories.map((category) => (
-                  <article className="category-management-card" key={category.value}>
-                    <span style={{ color: category.color }}>{category.icon}</span>
-                    <div>
-                      <h4>{category.name}</h4>
-                      <p>
-                        {category.type === "income" ? "Thu nhập" : "Chi tiêu"} - đề xuất{" "}
-                        {formatCurrency(category.default_budget)}
-                      </p>
-                    </div>
-                    <button type="button" onClick={() => handleEditCategory(category)}>
-                      Sửa
-                    </button>
-                    <button
-                      type="button"
-                      disabled={Boolean(category.is_default)}
-                      onClick={() => handleDeleteCategory(category.id)}
-                    >
-                      Xóa
-                    </button>
-                  </article>
-                ))}
-              </div>
-            </section>
           </aside>
           )}
         </section>
@@ -1357,7 +1388,6 @@ function ExpensesPage() {
                 <p>Kết quả</p>
                 <h3>Phân bổ sinh tồn</h3>
               </div>
-              <span>AI sẽ nâng cấp sau</span>
             </div>
 
             {!survivalPlan ? (
@@ -1384,6 +1414,10 @@ function ExpensesPage() {
                 </div>
 
                 <p className="risk-message">{survivalPlan.risk_message}</p>
+
+                <button className="primary-button survival-ai-button" type="button" onClick={openSurvivalAI}>
+                  Nhờ AI tối ưu kế hoạch sinh tồn
+                </button>
 
                 <div className="survival-category-list">
                   {survivalPlan.categories.map((category) => (

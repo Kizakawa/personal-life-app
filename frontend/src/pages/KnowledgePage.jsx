@@ -466,7 +466,7 @@ function KnowledgePage() {
   }
 
   return (
-    <div className="library-page">
+    <div className={`library-page ${showForm ? "entry-mode" : ""}`}>
       <header className="page-header library-header">
         <div>
           <span className="library-eyebrow">PERSONAL LIBRARY</span>

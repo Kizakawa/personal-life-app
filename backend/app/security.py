@@ -154,3 +154,74 @@ def extract_bearer_token(authorization: str | None) -> str | None:
         return None
 
     return token.strip()
+
+
+RECOVERY_KEY_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+
+
+def generate_recovery_key() -> str:
+    parts = [
+        "".join(secrets.choice(RECOVERY_KEY_CHARS) for _ in range(4))
+        for _ in range(3)
+    ]
+    return f"PLA-{'-'.join(parts)}"
+
+
+def normalize_recovery_key(key: str | None) -> str:
+    if not key:
+        return ""
+    return key.replace("-", "").replace(" ", "").strip().upper()
+
+
+def hash_recovery_key(key: str) -> str:
+    normalized = normalize_recovery_key(key)
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+
+def verify_recovery_key(key: str | None, stored_hash: str | None, plain_key: str | None = None) -> bool:
+    if not key:
+        return False
+    normalized_input = normalize_recovery_key(key)
+    if not normalized_input:
+        return False
+
+    if stored_hash:
+        input_hash = hashlib.sha256(normalized_input.encode("utf-8")).hexdigest()
+        if hmac.compare_digest(input_hash, stored_hash):
+            return True
+
+    if plain_key:
+        normalized_plain = normalize_recovery_key(plain_key)
+        if hmac.compare_digest(normalized_input, normalized_plain):
+            return True
+
+    return False
+
+
+import unicodedata
+
+
+def strip_vietnamese_accents(text: str) -> str:
+    text = unicodedata.normalize("NFD", text)
+    text = "".join(c for c in text if unicodedata.category(c) != "Mn")
+    text = text.replace("đ", "d").replace("Đ", "D")
+    return unicodedata.normalize("NFC", text)
+
+
+def normalize_security_answer(answer: str | None) -> str:
+    if not answer:
+        return ""
+    stripped = strip_vietnamese_accents(answer)
+    return " ".join(stripped.strip().lower().split())
+
+
+def hash_security_answer(answer: str) -> str:
+    normalized = normalize_security_answer(answer)
+    return hash_password(normalized)
+
+
+def verify_security_answer(answer: str | None, stored_hash: str | None) -> bool:
+    if not answer or not stored_hash:
+        return False
+    normalized = normalize_security_answer(answer)
+    return verify_password(normalized, stored_hash)

@@ -12,7 +12,7 @@ class SubjectBase(BaseModel):
     semester: Optional[str] = None
     attendance_limit: Optional[int] = 3
     target_score: Optional[float] = None
-    progress_status: Optional[str] = "not_started"
+    progress_status: Optional[str] = "studying"
     note: Optional[str] = None
 
 

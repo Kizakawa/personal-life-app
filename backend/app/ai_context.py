@@ -18,7 +18,7 @@ from app.models.workspace_item import WorkspaceItem
 
 
 AI_DEFAULT_SETTINGS = {
-    "ai_model": "gemini-2.0-flash",
+    "ai_model": "gemini-3.5-flash",
     "ai_allow_tasks": "1",
     "ai_allow_deadlines": "1",
     "ai_allow_schedule": "1",
@@ -147,7 +147,7 @@ def get_relevant_class_notes(db: Session, message: str | None, limit: int = 2):
 
     query = (
         db.query(WorkspaceItem)
-        .filter(WorkspaceItem.module.in_(["study", "knowledge", "documents"]))
+        .filter(WorkspaceItem.module.in_(["study", "class_notes", "knowledge", "documents"]))
         .filter(WorkspaceItem.content.isnot(None))
     )
 
@@ -207,7 +207,7 @@ def search_knowledge(db: Session, query_text: str | None, limit: int = 2) -> lis
                         FROM workspace_fts
                         JOIN workspace_items wi ON wi.id = CAST(workspace_fts.id AS INTEGER)
                         WHERE workspace_fts MATCH :query
-                          AND wi.module IN ('study', 'knowledge', 'documents')
+                          AND wi.module IN ('study', 'class_notes', 'knowledge', 'documents')
                           AND wi.content IS NOT NULL
                         ORDER BY score ASC
                         LIMIT :limit
@@ -500,7 +500,7 @@ def build_ai_context(db: Session, user_message: str | None = None):
         "Chi duoc dua tren du lieu ngu canh duoc cap ben duoi. "
         "Neu khong co du lieu, hay noi ro la ban chua du thong tin. "
         "Khong yeu cau hoac tiet lo API key, mat khau, token. "
-        "Khong tu nhan rang da sua/xoa/tao du lieu vi ban chi co quyen doc. "
+        "Neu nguoi dung yeu cau them, sua, hoac xoa thoi khoa bieu/lich hoc, hay chu dong huong dan nguoi dung go ro cau lenh hanh dong (vi du: 'Them mon...', 'Doi gio mon...', 'Xoa mon...', 'Xoa het cac mon thu 2') de Tro ly AI tu dong nhan dien va kich hoat hop thoai xac nhan an toan. "
         "Tra loi bang tieng Viet, ngan gon, co thu tu uu tien neu phu hop.\n\n"
         "DU LIEU DUOC CAP:\n"
         + "\n\n".join(raw_context)

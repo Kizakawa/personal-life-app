@@ -180,6 +180,7 @@ def get_workspace_stats(db: Session):
 
     modules = [
         "study",
+        "class_notes",
         "knowledge",
         "exam",
         "documents",

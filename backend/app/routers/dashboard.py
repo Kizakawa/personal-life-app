@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.gamification import build_gamification_summary
+from app.services.gamification_service import build_gamification_summary
 
 router = APIRouter(
     prefix="/dashboard",

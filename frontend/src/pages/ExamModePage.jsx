@@ -355,13 +355,15 @@ function ExamModePage() {
     try {
       const payload = buildPayload();
 
+      let savedItem = null;
+
       if (editingId) {
-        await updateWorkspaceItem(editingId, payload);
+        savedItem = await updateWorkspaceItem(editingId, payload);
       } else {
-        await createWorkspaceItem(payload);
+        savedItem = await createWorkspaceItem(payload);
       }
 
-      const preferredSelectedId = editingId;
+      const preferredSelectedId = savedItem?.id || editingId;
       resetForm();
       await loadData(preferredSelectedId);
     } catch (err) {
@@ -449,7 +451,7 @@ function ExamModePage() {
         priority: subject?.progress_status === "needs_review" ? "high" : "medium",
         subject: subjectName,
         project_name: "",
-        target_date: "",
+        target_date: null,
         file_path: "",
         url: "",
         tags: "#ke-hoach #tong-on",
@@ -472,7 +474,7 @@ function ExamModePage() {
   }
 
   return (
-    <div className="learning-page">
+    <div className={`learning-page ${showForm ? "entry-mode" : ""}`}>
       <header className="learning-header">
         <div>
           <span className="learning-eyebrow">EXAM SPRINT</span>
