@@ -151,7 +151,7 @@ Dự án tích hợp sẵn kịch bản đóng gói tự động phục vụ tri
 
 <div align="center">
 
-**Tác giả:** **Phan Quốc Bảo (Kizakawa) — Sinh viên ngành Khoa học máy tính** • 📧 [vivyngocnghech@gmail.com](mailto:vivyngocnghech@gmail.com)  
+**Tác giả:** **Phan Quốc Bảo (Kizakawa) — Sinh viên ngành Khoa học máy tính** • 📧 [phanquocbao.vp@gmail.com](mailto:phanquocbao.vp@gmail.com)  
 [⬅️ **Quay lại Trang chủ Portfolio GitHub (@Kizakawa)**](https://github.com/Kizakawa)
 
 </div>
